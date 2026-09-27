@@ -53,18 +53,32 @@ public:
 	bool IsTravelScreenOpen() const;
 
 	/** The forecast board (GDD 17): today's signals, their confidence, and
-	    what you stand to gain or lose on each. */
+	    what you stand to gain or lose on each. Replaces the notebook if that
+	    tab is up. */
 	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
 	void OpenForecastScreen();
 
 	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
 	void CloseForecastScreen();
 
+	/** N. The board and the notebook are two tabs of one screen: N closes
+	    whichever is up, or opens the tab you used last. */
 	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
 	void ToggleForecastScreen();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
 	bool IsForecastScreenOpen() const;
+
+	/** The notebook (GDD 17): past forecasts, results, "neden yanıldım".
+	    The board's second tab; replaces the board if that is up. */
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void OpenNotebookScreen();
+
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void CloseNotebookScreen();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
+	bool IsNotebookScreenOpen() const;
 
 	/** Queue the result card for a judged commitment (GDD 4 step 6). Cards
 	    show one at a time; closing one brings up the next. */
@@ -106,6 +120,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> ForecastScreen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> NotebookScreen;
+
+	/** Which tab N opens: the one last shown. */
+	bool bNotebookTabLast = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> ResultCard;

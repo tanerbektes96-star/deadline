@@ -51,6 +51,11 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Data")
 	TSoftClassPtr<UUserWidget> CommitmentResultWidget;
 
+	/** WBP_NotebookScreen — past forecasts and their results (GDD 17), the
+	    board's second tab on N. */
+	UPROPERTY(Config, EditAnywhere, Category = "Data")
+	TSoftClassPtr<UUserWidget> NotebookScreenWidget;
+
 	// --- Language ---------------------------------------------------------
 
 	/** The game's language: "tr" or "en". Turkish by default. Separate from

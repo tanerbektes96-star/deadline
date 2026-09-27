@@ -34,7 +34,7 @@
 // (the event started on its day or it did not -- public by then, never the
 // calendar's truth ahead of time) and against what the goods bought for it are
 // worth: sales since the commitment plus today's value of the rest, less what
-// they cost. The result card and the notebook (next roadmap items) read it.
+// they cost. The result card and the notebook read it.
 
 #pragma once
 
@@ -294,6 +294,47 @@ struct FForecastCommitment
 	bool IsLive() const { return State == ECommitmentState::Open || State == ECommitmentState::Holding; }
 };
 
+/** The notebook's header (GDD 17 "Not Defteri"): how your forecasts went,
+    across every judged commitment. Counts, not percentages, so a run with two
+    results does not read as "%50" like a verdict. */
+USTRUCT(BlueprintType)
+struct FNotebookSummary
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 Judged = 0;
+
+	/** The event came when the source said. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 Happened = 0;
+
+	/** Judged commitments you actually bought for. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 Traded = 0;
+
+	/** Of those, the ones that made money. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 Profitable = 0;
+
+	/** Sum of Result over everything judged. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float TotalResult = 0.f;
+
+	/** What the sources said, on average, when you committed. Beside
+	    Happened / Judged it shows whether you trust them too much. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float AverageConfidence = 0.f;
+
+	/** The costly lesson you have had most often, if at least twice:
+	    the one habit worth changing. None otherwise. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	ECommitmentLesson RepeatLesson = ECommitmentLesson::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 RepeatCount = 0;
+};
+
 /** Why a commitment was refused, for the panel to say. */
 UENUM(BlueprintType)
 enum class ECommitRefusal : uint8
@@ -362,6 +403,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
 	const TArray<FForecastCommitment>& GetCommitments() const { return Commitments; }
 
+	/** The notebook's header over this run's commitments. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
+	FNotebookSummary GetNotebookSummary() const { return Summarise(Commitments); }
+
 	/** Most containers the unlocked funds buy at today's price. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
 	int32 GetMaxAffordable(FName ProductID) const;
@@ -382,6 +427,10 @@ private:
 public:
 	/** Pick the lesson from a judged commitment's numbers. Pure, for tests. */
 	static ECommitmentLesson PickLesson(const FForecastCommitment& C);
+
+	/** Tally judged commitments; live and cancelled ones are skipped. Pure,
+	    for tests. */
+	static FNotebookSummary Summarise(const TArray<FForecastCommitment>& InCommitments);
 
 private:
 	void AdvanceCommitments(int32 Today);

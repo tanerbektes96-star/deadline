@@ -168,6 +168,13 @@ bool ADeadlinePlayerController::IsForecastScreenOpen() const
 
 void ADeadlinePlayerController::OpenForecastScreen()
 {
+	// Switching tabs: take the other one down first. OpenScreen sets the
+	// input mode again, so the brief return to game-only is not seen.
+	if (IsNotebookScreenOpen())
+	{
+		CloseScreen(NotebookScreen);
+	}
+	bNotebookTabLast = false;
 	OpenScreen(UDeadlineSettings::Get().ForecastScreenWidget, TEXT("Forecast Screen Widget"), ForecastScreen);
 }
 
@@ -182,10 +189,38 @@ void ADeadlinePlayerController::ToggleForecastScreen()
 	{
 		CloseForecastScreen();
 	}
+	else if (IsNotebookScreenOpen())
+	{
+		CloseNotebookScreen();
+	}
+	else if (bNotebookTabLast)
+	{
+		OpenNotebookScreen();
+	}
 	else
 	{
 		OpenForecastScreen();
 	}
+}
+
+bool ADeadlinePlayerController::IsNotebookScreenOpen() const
+{
+	return NotebookScreen != nullptr && NotebookScreen->IsInViewport();
+}
+
+void ADeadlinePlayerController::OpenNotebookScreen()
+{
+	if (IsForecastScreenOpen())
+	{
+		CloseScreen(ForecastScreen);
+	}
+	bNotebookTabLast = true;
+	OpenScreen(UDeadlineSettings::Get().NotebookScreenWidget, TEXT("Notebook Screen Widget"), NotebookScreen);
+}
+
+void ADeadlinePlayerController::CloseNotebookScreen()
+{
+	CloseScreen(NotebookScreen);
 }
 
 // --- Result cards -----------------------------------------------------------------
@@ -240,7 +275,7 @@ void ADeadlinePlayerController::CloseResultCard()
 	}
 	// The card may have come up over another screen: hand that one the mouse
 	// back rather than dropping the player into walking mode under it.
-	for (UUserWidget* Under : { MarketScreen.Get(), TravelScreen.Get(), ForecastScreen.Get() })
+	for (UUserWidget* Under : { MarketScreen.Get(), TravelScreen.Get(), ForecastScreen.Get(), NotebookScreen.Get() })
 	{
 		if (Under && Under->IsInViewport())
 		{

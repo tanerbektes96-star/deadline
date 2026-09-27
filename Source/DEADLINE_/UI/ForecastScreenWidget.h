@@ -71,6 +71,10 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> CloseButton;
 
+	/** The notebook tab: past forecasts and their results. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> NotebookTabButton;
+
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> DetailTitleText;
 
@@ -182,6 +186,9 @@ private:
 
 	UFUNCTION()
 	void HandleCloseClicked();
+
+	UFUNCTION()
+	void HandleNotebookTabClicked();
 
 	UForecastSubsystem* GetForecast() const;
 

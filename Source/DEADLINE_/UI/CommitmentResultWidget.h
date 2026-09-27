@@ -35,8 +35,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Deadline|Forecast")
 	void SetCommitment(const FForecastCommitment& Commitment, int32 QueueLeft);
 
-	/** Lesson title and body, in the game's language. Shared with the
-	    notebook, which says the same thing in a smaller space. */
+	/** The card's words, one per line of it, in the game's language. Shared
+	    with the notebook, which says the same thing in a smaller space. */
+	static FLinearColor OutcomeTone(const FForecastCommitment& C);
+	static FText Verdict(const FForecastCommitment& C);
+	static FText Odds(const FForecastCommitment& C);
+	static FText Outcome(const FForecastCommitment& C);
+	static FText Ledger(const FForecastCommitment& C);
 	static FText LessonTitle(const FForecastCommitment& C);
 	static FText LessonBody(const FForecastCommitment& C, const FString& ProductName);
 

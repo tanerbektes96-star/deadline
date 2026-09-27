@@ -27,6 +27,10 @@ void UForecastScreenWidget::NativeConstruct()
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleCloseClicked);
 	}
+	if (NotebookTabButton)
+	{
+		NotebookTabButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleNotebookTabClicked);
+	}
 	if (ProductPrevButton) { ProductPrevButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleProductPrev); }
 	if (ProductNextButton) { ProductNextButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleProductNext); }
 	if (QtyMinusButton) { QtyMinusButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleQtyMinus); }
@@ -517,6 +521,14 @@ void UForecastScreenWidget::HandleCloseClicked()
 	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOwningPlayer()))
 	{
 		PC->CloseForecastScreen();
+	}
+}
+
+void UForecastScreenWidget::HandleNotebookTabClicked()
+{
+	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOwningPlayer()))
+	{
+		PC->OpenNotebookScreen();
 	}
 }
 

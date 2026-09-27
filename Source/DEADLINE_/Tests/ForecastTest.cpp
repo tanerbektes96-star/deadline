@@ -30,6 +30,7 @@
 #include "Inventory/InventorySubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "UI/NotebookScreenWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -322,6 +323,66 @@ bool FDeadlineForecastLessonTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("False rumour, loss"), UForecastSubsystem::PickLesson(Make(false, 4, -300.f, -100.f)), ECommitmentLesson::FalseRumour);
 	TestEqual(TEXT("False rumour, nothing bought"), UForecastSubsystem::PickLesson(Make(false, 0, 0.f, -100.f)), ECommitmentLesson::FalseRumourSpared);
 	TestEqual(TEXT("False rumour, profit anyway"), UForecastSubsystem::PickLesson(Make(false, 4, 120.f, 200.f)), ECommitmentLesson::LuckyWin);
+	return true;
+}
+
+// The notebook's tally, from hand-made commitments: what counts, what is
+// skipped, and when a lesson becomes a habit worth naming.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDeadlineForecastNotebookTest,
+	"Deadline.Forecast.Notebook",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FDeadlineForecastNotebookTest::RunTest(const FString& Parameters)
+{
+	auto Make = [](ECommitmentState State, bool bHappened, int32 Bought, float Result, float Best, float Confidence)
+	{
+		FForecastCommitment C;
+		C.State = State;
+		C.bEventHappened = bHappened;
+		C.BoughtContainers = Bought;
+		C.TargetContainers = FMath::Max(1, Bought);
+		C.Result = Result;
+		C.BestResult = Best;
+		C.Confidence = Confidence;
+		C.Lesson = UForecastSubsystem::PickLesson(C);
+		return C;
+	};
+
+	TestEqual(TEXT("Empty notebook"), UForecastSubsystem::Summarise({}).Judged, 0);
+
+	TArray<FForecastCommitment> Run;
+	Run.Add(Make(ECommitmentState::Resolved, true, 4, 500.f, 800.f, 0.8f));     // GoodCall
+	Run.Add(Make(ECommitmentState::Resolved, false, 3, -300.f, -100.f, 0.7f));  // FalseRumour
+	Run.Add(Make(ECommitmentState::Resolved, false, 2, -150.f, -50.f, 0.6f));   // FalseRumour
+	Run.Add(Make(ECommitmentState::Resolved, true, 0, 0.f, 400.f, 0.9f));       // MissedIt
+	Run.Add(Make(ECommitmentState::Open, false, 5, 0.f, 0.f, 0.5f));            // live: skipped
+	Run.Add(Make(ECommitmentState::Cancelled, false, 0, 0.f, 0.f, 0.5f));       // cancelled: skipped
+
+	const FNotebookSummary S = UForecastSubsystem::Summarise(Run);
+	TestEqual(TEXT("Only judged ones count"), S.Judged, 4);
+	TestEqual(TEXT("Came true"), S.Happened, 2);
+	TestEqual(TEXT("Traded = bought something"), S.Traded, 3);
+	TestEqual(TEXT("Profitable trades"), S.Profitable, 1);
+	TestEqual(TEXT("Total = sum of results"), S.TotalResult, 50.f, 0.01f);
+	TestEqual(TEXT("Average confidence over judged"), S.AverageConfidence, 0.75f, 0.0001f);
+	TestEqual(TEXT("Twice-seen costly lesson is the habit"), S.RepeatLesson, ECommitmentLesson::FalseRumour);
+	TestEqual(TEXT("Habit count"), S.RepeatCount, 2);
+	TestFalse(TEXT("Habit has words"), UNotebookScreenWidget::HabitLine(S.RepeatLesson, S.RepeatCount).IsEmpty());
+
+	// Once is not a habit; a good call is never one.
+	TArray<FForecastCommitment> Once;
+	Once.Add(Make(ECommitmentState::Resolved, true, 4, -200.f, 300.f, 0.8f));   // HeldTooLong
+	Once.Add(Make(ECommitmentState::Resolved, true, 4, 500.f, 800.f, 0.8f));    // GoodCall
+	Once.Add(Make(ECommitmentState::Resolved, true, 4, 300.f, 800.f, 0.8f));    // GoodCall
+	const FNotebookSummary O = UForecastSubsystem::Summarise(Once);
+	TestEqual(TEXT("No habit from one lesson or from good calls"), O.RepeatLesson, ECommitmentLesson::None);
+	TestTrue(TEXT("No habit line under two"), UNotebookScreenWidget::HabitLine(ECommitmentLesson::HeldTooLong, 1).IsEmpty());
+
+	// A missed call where buying would have lost is not a habit either.
+	TArray<FForecastCommitment> Spared;
+	Spared.Add(Make(ECommitmentState::Resolved, true, 0, 0.f, -40.f, 0.8f));
+	Spared.Add(Make(ECommitmentState::Resolved, true, 0, 0.f, -60.f, 0.8f));
+	TestEqual(TEXT("Missed-but-harmless is not costly"), UForecastSubsystem::Summarise(Spared).RepeatLesson, ECommitmentLesson::None);
 	return true;
 }
 

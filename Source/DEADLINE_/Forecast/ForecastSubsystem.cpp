@@ -433,6 +433,54 @@ ECommitmentLesson UForecastSubsystem::PickLesson(const FForecastCommitment& C)
 	return C.BestResult > 0.f ? ECommitmentLesson::HeldTooLong : ECommitmentLesson::EatenBySpread;
 }
 
+FNotebookSummary UForecastSubsystem::Summarise(const TArray<FForecastCommitment>& InCommitments)
+{
+	FNotebookSummary S;
+	TMap<uint8, int32> Costly;
+	float ConfidenceSum = 0.f;
+	for (const FForecastCommitment& C : InCommitments)
+	{
+		if (C.State != ECommitmentState::Resolved)
+		{
+			continue;
+		}
+		++S.Judged;
+		S.Happened += C.bEventHappened ? 1 : 0;
+		S.TotalResult += C.Result;
+		ConfidenceSum += C.Confidence;
+		if (C.BoughtContainers > 0)
+		{
+			++S.Traded;
+			S.Profitable += C.Result > 0.5f ? 1 : 0;
+		}
+
+		// Only lessons that cost money, or would have made it: a good call or
+		// a spared false rumour is not a habit to change. A missed call only
+		// counts when buying would actually have paid.
+		const bool bCostly = C.Lesson == ECommitmentLesson::EatenBySpread
+			|| C.Lesson == ECommitmentLesson::HeldTooLong
+			|| C.Lesson == ECommitmentLesson::FalseRumour
+			|| (C.Lesson == ECommitmentLesson::MissedIt && C.BestResult > 0.f);
+		if (bCostly)
+		{
+			++Costly.FindOrAdd(static_cast<uint8>(C.Lesson));
+		}
+	}
+	S.AverageConfidence = S.Judged > 0 ? ConfidenceSum / S.Judged : 0.f;
+
+	// Ties go to the lower enum value, so the pick does not depend on map order.
+	for (const TPair<uint8, int32>& Pair : Costly)
+	{
+		if (Pair.Value >= 2 && (Pair.Value > S.RepeatCount
+			|| (Pair.Value == S.RepeatCount && Pair.Key < static_cast<uint8>(S.RepeatLesson))))
+		{
+			S.RepeatLesson = static_cast<ECommitmentLesson>(Pair.Key);
+			S.RepeatCount = Pair.Value;
+		}
+	}
+	return S;
+}
+
 void UForecastSubsystem::HandleTransaction(const FTransactionRecord& Record)
 {
 	FForecastCommitment* C = Commitments.FindByPredicate([&Record](const FForecastCommitment& X)

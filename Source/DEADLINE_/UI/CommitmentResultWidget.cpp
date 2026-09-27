@@ -12,21 +12,6 @@
 #include "UI/DeadlineUIPalette.h"
 #include "UI/ForecastFormat.h"
 
-namespace
-{
-	FText Percent(float Fraction)
-	{
-		return FText::AsNumber(FMath::RoundToInt(Fraction * 100.f));
-	}
-
-	/** "+$1.240" / "−$380": the sign outside the currency, as people say it. */
-	FText SignedMoney(float Value)
-	{
-		return FText::Format(NSLOCTEXT("Deadline", "SignedMoney", "{0}{1}"),
-			FText::FromString(Value < 0.f ? TEXT("−") : TEXT("+")), ForecastFormat::Money(FMath::Abs(Value)));
-	}
-}
-
 void UCommitmentResultWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -43,10 +28,7 @@ void UCommitmentResultWidget::SetCommitment(const FForecastCommitment& C, int32 
 	const UEventSubsystem* Events = GI ? GI->GetSubsystem<UEventSubsystem>() : nullptr;
 	const FString Product = Catalogue ? Catalogue->GetDisplayName(C.ProductID) : C.ProductID.ToString();
 	const FString Event = Events ? Events->GetEventName(C.EventID) : C.EventID.ToString();
-
-	const bool bProfit = C.Result > 0.5f;
-	const bool bLoss = C.Result < -0.5f;
-	const FLinearColor Tone = bProfit ? DeadlineUI::Profit : (bLoss ? DeadlineUI::Loss : DeadlineUI::Muted);
+	const FLinearColor Tone = OutcomeTone(C);
 
 	if (ResultFrame)
 	{
@@ -54,9 +36,7 @@ void UCommitmentResultWidget::SetCommitment(const FForecastCommitment& C, int32 
 	}
 	if (VerdictText)
 	{
-		VerdictText->SetText(C.bEventHappened
-			? NSLOCTEXT("Deadline", "ResultRight", "TAHMİN TUTTU")
-			: NSLOCTEXT("Deadline", "ResultWrong", "TAHMİN TUTMADI"));
+		VerdictText->SetText(Verdict(C));
 		VerdictText->SetColorAndOpacity(FSlateColor(C.bEventHappened ? DeadlineUI::Profit : DeadlineUI::Loss));
 	}
 	if (TitleText)
@@ -66,62 +46,16 @@ void UCommitmentResultWidget::SetCommitment(const FForecastCommitment& C, int32 
 	}
 	if (OddsText)
 	{
-		FText What;
-		if (!C.bEventHappened)
-		{
-			What = FText::Format(NSLOCTEXT("Deadline", "ResultDidNot", "{0}. gün beklenen olay gerçekleşmedi"),
-				FText::AsNumber(C.ExpectedDay));
-		}
-		else if (C.EventEndDay != INDEX_NONE)
-		{
-			// EndDay is the first day it is over; say the last day it ran, and
-			// say "will run" if it outlives the judgement.
-			const FText LastDay = FText::AsNumber(C.EventEndDay - 1);
-			What = C.EventEndDay > C.GetResolveDay()
-				? FText::Format(NSLOCTEXT("Deadline", "ResultRunning", "olay {0}. gün başladı, {1}. güne kadar sürecek"),
-					FText::AsNumber(C.ExpectedDay), LastDay)
-				: FText::Format(NSLOCTEXT("Deadline", "ResultRan", "olay {0}. gün başladı, {1}. günden sonra bitti"),
-					FText::AsNumber(C.ExpectedDay), LastDay);
-		}
-		OddsText->SetText(FText::Format(NSLOCTEXT("Deadline", "ResultOdds", "Kaynak %{0} demişti  ·  {1}"),
-			Percent(C.Confidence), What));
+		OddsText->SetText(Odds(C));
 	}
 	if (OutcomeText)
 	{
-		FText Outcome;
-		if (C.BoughtContainers == 0)
-		{
-			Outcome = NSLOCTEXT("Deadline", "ResultNoTrade", "İŞLEM YOK");
-		}
-		else if (bProfit || bLoss)
-		{
-			Outcome = FText::Format(bProfit ? NSLOCTEXT("Deadline", "ResultGain", "KAZANÇ  {0}")
-				: NSLOCTEXT("Deadline", "ResultLoss", "KAYIP  {0}"), SignedMoney(C.Result));
-		}
-		else
-		{
-			Outcome = NSLOCTEXT("Deadline", "ResultEven", "BAŞABAŞ");
-		}
-		OutcomeText->SetText(Outcome);
+		OutcomeText->SetText(Outcome(C));
 		OutcomeText->SetColorAndOpacity(FSlateColor(Tone));
 	}
 	if (LedgerText)
 	{
-		const int32 Held = FMath::Max(0, C.BoughtContainers - C.SoldContainers);
-		const float HeldValue = C.Result - C.Proceeds + C.Spent;
-		FText Ledger = FText::Format(NSLOCTEXT("Deadline", "ResultBought", "Alınan:  {0} / {1} konteyner  ·  {2} ödendi"),
-			FText::AsNumber(C.BoughtContainers), FText::AsNumber(C.TargetContainers), ForecastFormat::Money(C.Spent));
-		if (C.SoldContainers > 0)
-		{
-			Ledger = FText::Format(NSLOCTEXT("Deadline", "ResultSoldLine", "{0}\nSatılan:  {1}  ·  {2} geldi"),
-				Ledger, FText::AsNumber(C.SoldContainers), ForecastFormat::Money(C.Proceeds));
-		}
-		if (Held > 0)
-		{
-			Ledger = FText::Format(NSLOCTEXT("Deadline", "ResultHeldLine", "{0}\nElde kalan:  {1}  ·  bugün {2} eder"),
-				Ledger, FText::AsNumber(Held), ForecastFormat::Money(HeldValue));
-		}
-		LedgerText->SetText(Ledger);
+		LedgerText->SetText(Ledger(C));
 	}
 	if (LessonTitleText)
 	{
@@ -139,6 +73,79 @@ void UCommitmentResultWidget::SetCommitment(const FForecastCommitment& C, int32 
 	}
 }
 
+// --- Wording, shared with the notebook ---------------------------------------------
+
+FLinearColor UCommitmentResultWidget::OutcomeTone(const FForecastCommitment& C)
+{
+	return C.Result > 0.5f ? DeadlineUI::Profit : (C.Result < -0.5f ? DeadlineUI::Loss : DeadlineUI::Muted);
+}
+
+FText UCommitmentResultWidget::Verdict(const FForecastCommitment& C)
+{
+	return C.bEventHappened
+		? NSLOCTEXT("Deadline", "ResultRight", "TAHMİN TUTTU")
+		: NSLOCTEXT("Deadline", "ResultWrong", "TAHMİN TUTMADI");
+}
+
+FText UCommitmentResultWidget::Odds(const FForecastCommitment& C)
+{
+	FText What;
+	if (!C.bEventHappened)
+	{
+		What = FText::Format(NSLOCTEXT("Deadline", "ResultDidNot", "{0}. gün beklenen olay gerçekleşmedi"),
+			FText::AsNumber(C.ExpectedDay));
+	}
+	else if (C.EventEndDay != INDEX_NONE)
+	{
+		// EndDay is the first day it is over; say the last day it ran, and
+		// say "will run" if it outlives the judgement.
+		const FText LastDay = FText::AsNumber(C.EventEndDay - 1);
+		What = C.EventEndDay > C.GetResolveDay()
+			? FText::Format(NSLOCTEXT("Deadline", "ResultRunning", "olay {0}. gün başladı, {1}. güne kadar sürecek"),
+				FText::AsNumber(C.ExpectedDay), LastDay)
+			: FText::Format(NSLOCTEXT("Deadline", "ResultRan", "olay {0}. gün başladı, {1}. günden sonra bitti"),
+				FText::AsNumber(C.ExpectedDay), LastDay);
+	}
+	return FText::Format(NSLOCTEXT("Deadline", "ResultOdds", "Kaynak %{0} demişti  ·  {1}"),
+		ForecastFormat::Percent(C.Confidence), What);
+}
+
+FText UCommitmentResultWidget::Outcome(const FForecastCommitment& C)
+{
+	if (C.BoughtContainers == 0)
+	{
+		return NSLOCTEXT("Deadline", "ResultNoTrade", "İŞLEM YOK");
+	}
+	if (C.Result > 0.5f)
+	{
+		return FText::Format(NSLOCTEXT("Deadline", "ResultGain", "KAZANÇ  {0}"), ForecastFormat::SignedMoney(C.Result));
+	}
+	if (C.Result < -0.5f)
+	{
+		return FText::Format(NSLOCTEXT("Deadline", "ResultLoss", "KAYIP  {0}"), ForecastFormat::SignedMoney(C.Result));
+	}
+	return NSLOCTEXT("Deadline", "ResultEven", "BAŞABAŞ");
+}
+
+FText UCommitmentResultWidget::Ledger(const FForecastCommitment& C)
+{
+	const int32 Held = FMath::Max(0, C.BoughtContainers - C.SoldContainers);
+	const float HeldValue = C.Result - C.Proceeds + C.Spent;
+	FText Lines = FText::Format(NSLOCTEXT("Deadline", "ResultBought", "Alınan:  {0} / {1} konteyner  ·  {2} ödendi"),
+		FText::AsNumber(C.BoughtContainers), FText::AsNumber(C.TargetContainers), ForecastFormat::Money(C.Spent));
+	if (C.SoldContainers > 0)
+	{
+		Lines = FText::Format(NSLOCTEXT("Deadline", "ResultSoldLine", "{0}\nSatılan:  {1}  ·  {2} geldi"),
+			Lines, FText::AsNumber(C.SoldContainers), ForecastFormat::Money(C.Proceeds));
+	}
+	if (Held > 0)
+	{
+		Lines = FText::Format(NSLOCTEXT("Deadline", "ResultHeldLine", "{0}\nElde kalan:  {1}  ·  {2}. gün değeri {3}"),
+			Lines, FText::AsNumber(Held), FText::AsNumber(C.GetResolveDay()), ForecastFormat::Money(HeldValue));
+	}
+	return Lines;
+}
+
 FText UCommitmentResultWidget::LessonTitle(const FForecastCommitment& C)
 {
 	switch (C.Lesson)
@@ -149,7 +156,7 @@ FText UCommitmentResultWidget::LessonTitle(const FForecastCommitment& C)
 	case ECommitmentLesson::MissedIt:
 		return NSLOCTEXT("Deadline", "LessonMissed", "NE KAÇTI");
 	case ECommitmentLesson::FalseRumourSpared:
-		return NSLOCTEXT("Deadline", "LessonSpared", "NE OLDU");
+		return NSLOCTEXT("Deadline", "LessonSparedTitle", "NE OLDU");
 	default:
 		return NSLOCTEXT("Deadline", "LessonWhyWrong", "NEDEN YANILDIM");
 	}
@@ -157,11 +164,11 @@ FText UCommitmentResultWidget::LessonTitle(const FForecastCommitment& C)
 
 FText UCommitmentResultWidget::LessonBody(const FForecastCommitment& C, const FString& ProductName)
 {
-	const FText Conf = Percent(C.Confidence);
-	const FText Rise = Percent(C.PeakRise);
-	const FText BreakEven = Percent(C.BreakEvenRise);
+	const FText Conf = ForecastFormat::Percent(C.Confidence);
+	const FText Rise = ForecastFormat::Percent(C.PeakRise);
+	const FText BreakEven = ForecastFormat::Percent(C.BreakEvenRise);
 	const FText PeakDay = FText::AsNumber(C.PeakDay);
-	const FText Best = SignedMoney(C.BestResult);
+	const FText Best = ForecastFormat::SignedMoney(C.BestResult);
 
 	switch (C.Lesson)
 	{

@@ -3,13 +3,16 @@
     UnrealEditor-Cmd.exe <uproject> -ExecutePythonScript=<this file>
         -unattended -nosplash -nop4 -RenderOffscreen
 
-Creates (or reuses) WBP_ForecastCard and WBP_ForecastScreen under
-/Game/Deadline/UI, rebuilds both trees from scratch, sets the screen's
-CardWidgetClass, and adds IA_Forecast (N) to IMC_Default and BP_DeadlinePlayer.
-Safe to run repeatedly.
+Creates (or reuses) WBP_ForecastCard, WBP_ForecastScreen,
+WBP_CommitmentResult, WBP_NotebookRow and WBP_NotebookScreen under
+/Game/Deadline/UI, rebuilds their trees from scratch, sets the screens'
+CardWidgetClass / RowWidgetClass, and adds IA_Forecast (N) to IMC_Default and
+BP_DeadlinePlayer. The board and the notebook are two tabs of one screen on N;
+each header carries a button to the other. Safe to run repeatedly.
 
 Needs the DEADLINE_Editor module (widget trees cannot be built from stock
-Python) and the C++ classes UForecastCardWidget / UForecastScreenWidget, so
+Python) and the C++ classes UForecastCardWidget / UForecastScreenWidget /
+UCommitmentResultWidget / UNotebookRowWidget / UNotebookScreenWidget, so
 build the C++ first. Helpers mirror build_travel_screen.py; palette and fonts
 follow DEADLINE_UI_Prompts.md 1.2 / 1.3.
 """
@@ -164,6 +167,25 @@ def widget_blueprint(name, parent_class):
         raise RuntimeError("could not create " + name)
     log("created " + name)
     return bp
+
+
+def tab(bp, name, label, parent, active):
+    """A header tab. The active one is a plain label in accent; the other is
+    a quiet button that switches to it."""
+    if active:
+        caption = add(bp, unreal.TextBlock, name, parent)
+        caption.set_text(label)
+        text(caption, 20, BODY, HEADING)
+        box_slot(caption, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 18.0, 0.0))
+        return caption
+    button = add(bp, unreal.Button, name, parent)
+    button_style(button, CLEAR, LINE, rgb("444D51"))
+    box_slot(button, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 18.0, 0.0))
+    caption = add(bp, unreal.TextBlock, name + "Label", button)
+    caption.set_text(label)
+    text(caption, 20, MUTED, HEADING)
+    align_slot(caption, padding=margin(6.0, 0.0, 6.0, 0.0), h=H_CENTER, v=V_CENTER)
+    return button
 
 
 # --- WBP_ForecastCard --------------------------------------------------------
@@ -348,10 +370,8 @@ def build_screen(card_bp):
     header_row = add(bp, unreal.HorizontalBox, "HeaderRow", header)
     align_slot(header_row)
 
-    title = add(bp, unreal.TextBlock, "TitleText", header_row)
-    title.set_text("TAHMİN PANOSU")
-    text(title, 20, BODY, HEADING)
-    box_slot(title, size=AUTO, v=V_CENTER)
+    tab(bp, "TitleText", "TAHMİN PANOSU", header_row, True)
+    tab(bp, "NotebookTabButton", "NOT DEFTERİ", header_row, False)
     day = add(bp, unreal.TextBlock, "HeaderDayText", header_row)
     text(day, 14, MUTED, NUMBER)
     box_slot(day, size=AUTO, v=V_CENTER, padding=margin(18.0, 0.0, 0.0, 0.0))
@@ -526,6 +546,188 @@ def build_result_card():
     log("WBP_CommitmentResult: {0} widgets".format(len(TOOLS.get_widget_names(bp))))
 
 
+# --- WBP_NotebookRow ---------------------------------------------------------
+
+def build_notebook_row():
+    bp = widget_blueprint("WBP_NotebookRow", unreal.NotebookRowWidget)
+    TOOLS.clear_widget_tree(bp)
+
+    # White tint, as on the forecast card: the colour is set in code.
+    frame = add(bp, unreal.Border, "RowFrame", None)
+    frame.set_editor_property("background", brush(WHITE, LINE))
+    frame.set_editor_property("brush_color", PANEL)
+    frame.set_editor_property("padding", margin())
+
+    click = add(bp, unreal.Button, "RowButton", frame)
+    button_style(click, CLEAR, unreal.LinearColor(1.0, 1.0, 1.0, 0.04), unreal.LinearColor(1.0, 1.0, 1.0, 0.08))
+    align_slot(click)
+
+    row = add(bp, unreal.HorizontalBox, "RowContent", click)
+    align_slot(row)
+
+    strip_box = add(bp, unreal.SizeBox, "ToneStripBox", row)
+    strip_box.set_width_override(4.0)
+    box_slot(strip_box, size=AUTO, v=V_FILL)
+    strip = add(bp, unreal.Border, "ToneStrip", strip_box)
+    strip.set_editor_property("background", brush(WHITE, radius=0.0))
+    strip.set_editor_property("brush_color", MUTED)
+    align_slot(strip)
+
+    day_box = add(bp, unreal.SizeBox, "DayBox", row)
+    day_box.set_width_override(64.0)
+    box_slot(day_box, size=AUTO, v=V_CENTER, padding=margin(12.0, 0.0, 6.0, 0.0))
+    day = add(bp, unreal.TextBlock, "DayText", day_box)
+    text(day, 12, MUTED, NUMBER)
+    align_slot(day, v=V_CENTER)
+
+    middle = add(bp, unreal.VerticalBox, "RowMiddle", row)
+    box_slot(middle, size=FILL, v=V_CENTER, padding=margin(0.0, 9.0, 12.0, 9.0))
+    name = add(bp, unreal.TextBlock, "NameText", middle)
+    text(name, 16, BODY, HEADING)
+    box_slot(name, size=AUTO)
+    status = add(bp, unreal.TextBlock, "StatusText", middle)
+    text(status, 12, MUTED, LABEL)
+    box_slot(status, size=AUTO, padding=margin(0.0, 1.0, 0.0, 0.0))
+
+    result = add(bp, unreal.TextBlock, "ResultText", row)
+    text(result, 16, BODY, NUMBER, unreal.TextJustify.RIGHT)
+    box_slot(result, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 14.0, 0.0))
+
+    TOOLS.compile_and_save(bp)
+    log("WBP_NotebookRow: {0} widgets".format(len(TOOLS.get_widget_names(bp))))
+    return bp
+
+
+# --- WBP_NotebookScreen ------------------------------------------------------
+
+def build_notebook_screen(row_bp):
+    bp = widget_blueprint("WBP_NotebookScreen", unreal.NotebookScreenWidget)
+    TOOLS.clear_widget_tree(bp)
+
+    canvas = add(bp, unreal.CanvasPanel, "RootCanvas", None)
+    screen = add(bp, unreal.Border, "ScreenBorder", canvas)
+    screen.set_editor_property("background", brush(GROUND))
+    screen.set_editor_property("padding", margin(18.0, 18.0, 18.0, 18.0))
+    fill_canvas(screen)
+
+    main = add(bp, unreal.VerticalBox, "MainColumn", screen)
+    align_slot(main)
+
+    # ---- header: same frame as the board, tabs swapped -------------------
+    header = add(bp, unreal.Border, "Header", main)
+    header.set_editor_property("background", brush(PANEL, LINE))
+    header.set_editor_property("padding", margin(14.0, 8.0, 14.0, 8.0))
+    box_slot(header, size=AUTO, padding=margin(0.0, 0.0, 0.0, 12.0))
+    header_row = add(bp, unreal.HorizontalBox, "HeaderRow", header)
+    align_slot(header_row)
+
+    tab(bp, "BoardTabButton", "TAHMİN PANOSU", header_row, False)
+    tab(bp, "TitleText", "NOT DEFTERİ", header_row, True)
+    day = add(bp, unreal.TextBlock, "HeaderDayText", header_row)
+    text(day, 14, MUTED, NUMBER)
+    box_slot(day, size=AUTO, v=V_CENTER)
+    gap = add(bp, unreal.Spacer, "HeaderGap", header_row)
+    box_slot(gap, size=FILL)
+
+    close_box = add(bp, unreal.SizeBox, "CloseBox", header_row)
+    close_box.set_width_override(26.0)
+    close_box.set_height_override(26.0)
+    box_slot(close_box, size=AUTO, h=H_RIGHT, v=V_CENTER)
+    close = add(bp, unreal.Button, "CloseButton", close_box)
+    button_style(close, PANEL, LINE, rgb("444D51"))
+    align_slot(close)
+    close_label = add(bp, unreal.TextBlock, "CloseLabelText", close)
+    close_label.set_text("X")
+    text(close_label, 12, MUTED, LABEL, unreal.TextJustify.CENTER)
+    align_slot(close_label, h=H_CENTER, v=V_CENTER)
+
+    # ---- tally: counts left, total right, the habit below ----------------
+    tally = add(bp, unreal.Border, "TallyFrame", main)
+    tally.set_editor_property("background", brush(PANEL, LINE))
+    tally.set_editor_property("padding", margin(18.0, 12.0, 18.0, 12.0))
+    box_slot(tally, size=AUTO, padding=margin(0.0, 0.0, 0.0, 12.0))
+    tally_column = add(bp, unreal.VerticalBox, "TallyColumn", tally)
+    align_slot(tally_column)
+
+    tally_row = add(bp, unreal.HorizontalBox, "TallyRow", tally_column)
+    box_slot(tally_row, size=AUTO)
+    summary = add(bp, unreal.TextBlock, "SummaryText", tally_row)
+    text(summary, 14, BODY, LABEL, wrap=True)
+    box_slot(summary, size=FILL, v=V_CENTER, padding=margin(0.0, 0.0, 18.0, 0.0))
+    total = add(bp, unreal.TextBlock, "TotalText", tally_row)
+    text(total, 24, BODY, NUMBER, unreal.TextJustify.RIGHT)
+    box_slot(total, size=AUTO, v=V_CENTER)
+
+    pattern_frame = add(bp, unreal.Border, "PatternFrame", tally_column)
+    pattern_frame.set_editor_property("background", brush(RAISED, rgb("D4A63C")))
+    pattern_frame.set_editor_property("padding", margin(14.0, 8.0, 14.0, 9.0))
+    box_slot(pattern_frame, size=AUTO, padding=margin(0.0, 10.0, 0.0, 0.0))
+    pattern = add(bp, unreal.TextBlock, "PatternText", pattern_frame)
+    text(pattern, 14, BODY, LABEL, wrap=True)
+    align_slot(pattern)
+
+    # ---- body: rows left, detail right -----------------------------------
+    body = add(bp, unreal.HorizontalBox, "BodyRow", main)
+    box_slot(body, size=FILL)
+
+    left = add(bp, unreal.VerticalBox, "LeftColumn", body)
+    box_slot(left, size=FILL, value=0.42, padding=margin(0.0, 0.0, 14.0, 0.0))
+
+    empty = add(bp, unreal.TextBlock, "EmptyText", left)
+    empty.set_text("Henüz bir tahmine taahhüt etmedin.")
+    text(empty, 14, MUTED, LABEL, wrap=True)
+    box_slot(empty, size=AUTO, padding=margin(4.0, 4.0, 4.0, 12.0))
+
+    scroll = add(bp, unreal.ScrollBox, "RowScroll", left)
+    box_slot(scroll, size=FILL)
+    add(bp, unreal.VerticalBox, "RowList", scroll)
+
+    detail_frame = add(bp, unreal.Border, "DetailFrame", body)
+    detail_frame.set_editor_property("background", brush(PANEL, LINE))
+    detail_frame.set_editor_property("padding", margin(28.0, 22.0, 28.0, 22.0))
+    box_slot(detail_frame, size=FILL, value=0.58)
+
+    detail_scroll = add(bp, unreal.ScrollBox, "DetailScroll", detail_frame)
+    align_slot(detail_scroll)
+    detail = add(bp, unreal.VerticalBox, "DetailColumn", detail_scroll)
+
+    # Same order and sizes as the result card, a notch smaller.
+    verdict = add(bp, unreal.TextBlock, "DetailVerdictText", detail)
+    text(verdict, 15, BODY, HEADING)
+    box_slot(verdict, size=AUTO)
+    title = add(bp, unreal.TextBlock, "DetailTitleText", detail)
+    text(title, 28, BODY, HEADING, wrap=True)
+    box_slot(title, size=AUTO, padding=margin(0.0, 2.0, 0.0, 2.0))
+    odds = add(bp, unreal.TextBlock, "DetailOddsText", detail)
+    text(odds, 14, MUTED, LABEL, wrap=True)
+    box_slot(odds, size=AUTO, padding=margin(0.0, 0.0, 0.0, 14.0))
+    outcome = add(bp, unreal.TextBlock, "DetailOutcomeText", detail)
+    text(outcome, 34, BODY, NUMBER)
+    box_slot(outcome, size=AUTO, padding=margin(0.0, 0.0, 0.0, 10.0))
+    ledger = add(bp, unreal.TextBlock, "DetailLedgerText", detail)
+    text(ledger, 15, BODY, LABEL, wrap=True)
+    box_slot(ledger, size=AUTO, padding=margin(0.0, 0.0, 0.0, 16.0))
+
+    lesson_frame = add(bp, unreal.Border, "DetailLessonFrame", detail)
+    lesson_frame.set_editor_property("background", brush(RAISED, LINE))
+    lesson_frame.set_editor_property("padding", margin(16.0, 12.0, 16.0, 14.0))
+    box_slot(lesson_frame, size=AUTO)
+    lesson_column = add(bp, unreal.VerticalBox, "DetailLessonColumn", lesson_frame)
+    align_slot(lesson_column)
+    lesson_title = add(bp, unreal.TextBlock, "DetailLessonTitleText", lesson_column)
+    text(lesson_title, 15, ACCENT, HEADING)
+    box_slot(lesson_title, size=AUTO, padding=margin(0.0, 0.0, 0.0, 4.0))
+    lesson = add(bp, unreal.TextBlock, "DetailLessonText", lesson_column)
+    text(lesson, 15, BODY, LABEL, wrap=True)
+    box_slot(lesson, size=AUTO)
+
+    TOOLS.compile_and_save(bp)
+    cdo = unreal.get_default_object(bp.generated_class())
+    cdo.set_editor_property("row_widget_class", row_bp.generated_class())
+    unreal.EditorAssetLibrary.save_loaded_asset(bp, only_if_is_dirty=False)
+    log("WBP_NotebookScreen: {0} widgets, RowWidgetClass set".format(len(TOOLS.get_widget_names(bp))))
+
+
 # --- input: N -------------------------------------------------------------------
 
 def make_key(key_name):
@@ -571,6 +773,7 @@ def main():
     card = build_card()
     build_screen(card)
     build_result_card()
+    build_notebook_screen(build_notebook_row())
     bind_n_key()
     unreal.log("[Deadline forecast-ui] ---- done ----")
     for line in _report:
