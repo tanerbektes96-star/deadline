@@ -7,6 +7,7 @@
 #include "Core/DeadlineSettings.h"
 #include "Core/TimeSubsystem.h"
 #include "Economy/EconomySubsystem.h"
+#include "Events/EventSubsystem.h"
 #include "Engine/DataTable.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -21,6 +22,7 @@ void UTravelSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Collection.InitializeDependency(UFleetSubsystem::StaticClass());
 	Collection.InitializeDependency(UEconomySubsystem::StaticClass());
 	Collection.InitializeDependency(UTimeSubsystem::StaticClass());
+	Collection.InitializeDependency(UEventSubsystem::StaticClass());
 	Super::Initialize(Collection);
 
 	ResetAll();
@@ -206,6 +208,14 @@ FTravelQuote UTravelSubsystem::GetQuote(FName VehicleKey, FName ToID) const
 	Quote.FuelLitres = Quote.DistanceKm * Vehicle->FuelPerKm
 		* (1.f + Settings.LoadedFuelPenalty * Quote.LoadFraction);
 	Quote.FuelCost = Quote.FuelLitres * Settings.FuelPricePerLitre;
+
+	// Road closures and fuel hikes (GDD 13) make the trip dearer, not longer.
+	if (const UEventSubsystem* Events = GetGameInstance()->GetSubsystem<UEventSubsystem>())
+	{
+		const UTimeSubsystem* Time = GetTime();
+		Quote.EventMultiplier = Events->GetRouteCostMultiplier(Time ? Time->GetDay() : 0);
+		Quote.FuelCost *= Quote.EventMultiplier;
+	}
 
 	const UEconomySubsystem* Economy = GetEconomy();
 	if (!Economy || Economy->GetTotalFunds() < Quote.FuelCost)

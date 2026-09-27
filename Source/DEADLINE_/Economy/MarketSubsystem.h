@@ -17,6 +17,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "MarketSubsystem.generated.h"
 
+class UEventSubsystem;
 class UProductCatalogSubsystem;
 class USaveSubsystem;
 class UTimeSubsystem;
@@ -129,6 +130,7 @@ private:
 	/** One product's live state. Not a UPROPERTY: plain data, no UObjects. */
 	struct FProductMarketState
 	{
+		FName ProductID;
 		double Price = 0.0;
 		/** The price the model pulls back toward. Equal to BasePrice for now;
 		    it becomes a moving target when contracts and reputation land. */
@@ -160,8 +162,14 @@ private:
 	UFUNCTION()
 	void HandleCatalogueReloaded();
 
+	/** A forced event changed the calendar: every cached series may be
+	    stale from its start day on. Rebuild on next read. */
+	void HandleEventCalendarChanged();
+	FDelegateHandle EventCalendarHandle;
+
 	UProductCatalogSubsystem* GetCatalogue() const;
 	UTimeSubsystem* GetTime() const;
+	UEventSubsystem* GetEvents() const;
 	int32 GetRunSeed() const;
 
 	/** Lazy evaluation writes to the cache from const query functions, which

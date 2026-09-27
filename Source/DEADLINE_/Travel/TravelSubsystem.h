@@ -11,8 +11,8 @@
 //
 // Not here yet, and deliberately:
 //   Travel events (GDD 9.3) — the 20% roadblock / breakdown / grey-offer cards
-//                             need UEventSubsystem and a decision screen, both
-//                             Month 4. The roadmap puts them there.
+//                             need a decision screen. World events (GDD 13)
+//                             already reach the quote through EventMultiplier.
 //   Weather, driver skill    — GDD 9.4 lists both; neither system exists yet.
 
 #pragma once
@@ -58,6 +58,11 @@ struct FTravelQuote
 	/** 1.0 normally, 1.35 in rush hour (GDD 9.4). */
 	UPROPERTY(BlueprintReadOnly, Category = "Travel")
 	float TrafficMultiplier = 1.f;
+
+	/** Route events in effect today (GDD 13: road closure, fuel hike).
+	    Already applied to FuelCost; 1.0 when nothing is going on. */
+	UPROPERTY(BlueprintReadOnly, Category = "Travel")
+	float EventMultiplier = 1.f;
 
 	/** How full the truck is, 0..1. Adds up to 10% fuel (GDD 9.4). */
 	UPROPERTY(BlueprintReadOnly, Category = "Travel")

@@ -15,6 +15,7 @@
 #include "Travel/TravelSubsystem.h"
 #include "Economy/EconomySubsystem.h"
 #include "Economy/MarketSubsystem.h"
+#include "Events/EventSubsystem.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Engine/Engine.h"
@@ -886,6 +887,63 @@ void UDeadlineCheatManager::Dl_MarketDumpAll(int32 Days)
 	{
 		Report(FString::Printf(TEXT("Could not write %s"), *Path), true);
 	}
+}
+
+// --- Events (GDD 13) -----------------------------------------------------------
+
+void UDeadlineCheatManager::Dl_Events(int32 Days)
+{
+	const UEventSubsystem* Events = GetSub<UEventSubsystem>(this);
+	const UTimeSubsystem* Time = GetSub<UTimeSubsystem>(this);
+	if (!Events || !Time)
+	{
+		return;
+	}
+	const int32 Today = Time->GetDay();
+
+	const TArray<FActiveEvent> Active = Events->GetActiveEventsToday();
+	const TArray<FEventSignal> Signals = Events->GetSignalsToday();
+	Report(FString::Printf(TEXT("Day %d: %d active, %d signals, routes x%.2f (details in the Output Log)"),
+		Today, Active.Num(), Signals.Num(), Events->GetRouteCostMultiplier(Today)));
+
+	for (const FActiveEvent& E : Active)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]   ACTIVE %s %s  +%.0f%%  days %d-%d%s  %d products"),
+			*E.EventID.ToString(), *E.Name, E.Impact * 100.f, E.StartDay, E.EndDay - 1,
+			E.bForced ? TEXT(" (forced)") : TEXT(""), E.AffectedProducts.Num());
+	}
+	for (const FEventSignal& S : Signals)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]   SIGNAL %s %s  %.0f%%  expected day %d"),
+			*S.EventID.ToString(), *S.Name, S.Confidence * 100.f, S.ExpectedDay);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Deadline]   Calendar, days %d-%d, with the answers:"), Today, Today + Days);
+	for (const FScheduledEvent& E : Events->GetCalendar(Today, Today + Days))
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]     day %3d signal %s %-22s %3.0f%% -> %s  start %d, end %d, +%.0f%%"),
+			E.SignalDay, *E.EventID.ToString(), *Events->GetEventName(E.EventID), E.Confidence * 100.f,
+			E.bHappens ? TEXT("HAPPENS") : TEXT("false  "), E.StartDay, E.EndDay, E.Impact * 100.f);
+	}
+}
+
+void UDeadlineCheatManager::Dl_ForceEvent(FName EventID, float Impact, int32 Duration)
+{
+	UEventSubsystem* Events = GetSub<UEventSubsystem>(this);
+	if (!Events)
+	{
+		return;
+	}
+	if (!Events->ForceEvent(EventID, Impact, Duration))
+	{
+		Report(FString::Printf(TEXT("Unknown event '%s'. Try Dl_Events, or see DT_Events.csv."), *EventID.ToString()), true);
+		return;
+	}
+	const UTimeSubsystem* Time = GetSub<UTimeSubsystem>(this);
+	const TArray<FName> Products = Events->GetAffectedProducts(EventID);
+	Report(FString::Printf(TEXT("%s started: %d products pushed, routes x%.2f."),
+		*Events->GetEventName(EventID), Products.Num(),
+		Events->GetRouteCostMultiplier(Time ? Time->GetDay() : 0)));
 }
 
 void UDeadlineCheatManager::Dl_OpenMarket()

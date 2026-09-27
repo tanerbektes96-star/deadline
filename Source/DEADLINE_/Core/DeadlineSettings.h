@@ -30,6 +30,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Data", meta = (AllowedClasses = "/Script/Engine.DataTable"))
 	TSoftObjectPtr<UDataTable> DestinationTable;
 
+	/** DT_Events — world event templates (row type FEventRow, GDD 13). */
+	UPROPERTY(Config, EditAnywhere, Category = "Data", meta = (AllowedClasses = "/Script/Engine.DataTable"))
+	TSoftObjectPtr<UDataTable> EventTable;
+
 	/** WBP_MarketScreen. Named here rather than on the pawn so the Designer
 	    never has to wire it up: rebuild the Blueprint, keep the name, done. */
 	UPROPERTY(Config, EditAnywhere, Category = "Data")
@@ -142,6 +146,47 @@ public:
 	/** Logistics + labour + tax charged on each side of a trade (GDD 8.2). */
 	UPROPERTY(Config, EditAnywhere, Category = "Economy")
 	float HandlingCost = 0.05f;
+
+	// --- Event calendar (GDD 13) -------------------------------------------
+	// First-pass numbers, meant to be tuned by playing. See UEventSubsystem.
+
+	/** Chance, each day, that a new signal appears (a real event on its way
+	    or a false rumour). 0.4 = one every two and a half days on average. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float EventDailyChance = 0.4f;
+
+	/** Most signals and events in flight at once, rumours included. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "1"))
+	int32 MaxConcurrentEvents = 3;
+
+	/** Days between the signal and the start, inclusive range. The warning
+	    is the whole point: without it there is nothing to forecast. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "1"))
+	int32 SignalLeadDaysMin = 1;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "1"))
+	int32 SignalLeadDaysMax = 3;
+
+	/** The confidence a signal is shown with is rolled in this range, and the
+	    signal then comes true with exactly that probability, so 70% means 70%.
+	    The mean (0.75 here) sets the share of true signals; 1 - mean are
+	    false rumours. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SignalConfidenceMin = 0.55f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SignalConfidenceMax = 0.95f;
+
+	/** How much of the gap to an event's target price closes each day while
+	    it runs. Mean reversion is suspended for affected products meanwhile
+	    and takes them back down once it ends. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.05", ClampMax = "1.0"))
+	float EventApproachRate = 0.45f;
+
+	/** Cap on stacked event targets for one product, as a fraction of base.
+	    The risk band ceiling still applies on top. */
+	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.0"))
+	float MaxEventTarget = 3.f;
 
 	// --- Player (GDD 3.2) ---------------------------------------------------
 

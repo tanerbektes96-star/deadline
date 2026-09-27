@@ -7,6 +7,7 @@
 #include "Core/TimeSubsystem.h"
 #include "Economy/EconomySubsystem.h"
 #include "Economy/MarketSubsystem.h"
+#include "Events/EventSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -25,6 +26,7 @@ void USaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Collection.InitializeDependency(UMarketSubsystem::StaticClass());
 	Collection.InitializeDependency(UFleetSubsystem::StaticClass());
 	Collection.InitializeDependency(UTravelSubsystem::StaticClass());
+	Collection.InitializeDependency(UEventSubsystem::StaticClass());
 	Super::Initialize(Collection);
 
 	if (GameSeed == 0)
@@ -163,6 +165,14 @@ bool USaveSubsystem::LoadGame(const FString& SlotName)
 		Time->RestoreTotalMinutes(Save->TotalGameMinutes);
 	}
 
+	// The event calendar is not saved either: it re-rolls from the seed. Only
+	// cheat-forced events are dropped, and the day counter for the news
+	// delegates moves to the loaded day so nothing is re-announced.
+	if (UEventSubsystem* Events = GI->GetSubsystem<UEventSubsystem>())
+	{
+		Events->ResetAll();
+	}
+
 	if (UEconomySubsystem* Economy = GI->GetSubsystem<UEconomySubsystem>())
 	{
 		Economy->RestoreFunds(Save->Cash, Save->Bank);
@@ -287,6 +297,10 @@ void USaveSubsystem::StartNewGame(int32 InSeed)
 	if (UTravelSubsystem* Travel = GI->GetSubsystem<UTravelSubsystem>())
 	{
 		Travel->ResetAll();
+	}
+	if (UEventSubsystem* Events = GI->GetSubsystem<UEventSubsystem>())
+	{
+		Events->ResetAll();
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[Deadline] New game, seed %d."), GameSeed);

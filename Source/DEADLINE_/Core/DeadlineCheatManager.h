@@ -159,6 +159,19 @@ public:
 	UFUNCTION(exec)
 	void Dl_OpenMarket();
 
+	// --- Events (GDD 13) ---------------------------------------------------
+
+	/** Today's signals and active events, then the calendar for the next
+	    Days days WITH the answers (which signals come true). It gives the
+	    forecast away -- that is what a cheat is for. */
+	UFUNCTION(exec)
+	void Dl_Events(int32 Days = 10);
+
+	/** Start an event now, with no signal. Impact < 0 and Duration < 1 roll
+	    from DT_Events. Not saved. E.g. Dl_ForceEvent E12 1.5 5 */
+	UFUNCTION(exec)
+	void Dl_ForceEvent(FName EventID = TEXT("E02"), float Impact = -1.f, int32 Duration = -1);
+
 	// --- Balance data ------------------------------------------------------
 
 	/** Re-read Content/Deadline/Data/DT_Products.csv into the running game.

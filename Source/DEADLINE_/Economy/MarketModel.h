@@ -76,10 +76,9 @@ struct DEADLINE__API FMarketModel
 	 * One simulated day for one product.
 	 *
 	 * @param EventImpulse   Fraction of BasePrice, summed over active events.
-	 *        Always 0 in Month 2: the seeded event calendar is UEventSubsystem
-	 *        and the roadmap puts it in Month 4. The term is in the signature
-	 *        because it is in the GDD formula, not as a guess at what Month 4
-	 *        will want.
+	 *        From UEventSubsystem's calendar via EventImpulse(); 0 on a day
+	 *        no event touches the product. EconomyPrototype has no events,
+	 *        so the parity test compares the event-free series.
 	 * @param PlayerPressure Absolute dollars, from hoarding a big share of a
 	 *        product (GDD 7.8). Always 0 until Month 7, same reasoning.
 	 */
@@ -94,6 +93,35 @@ struct DEADLINE__API FMarketModel
 
 	/** Hard band clamp (GDD 8.1). The last thing that happens every day. */
 	static double ClampToBand(double Price, double BasePrice, ERiskBand Band);
+
+	/**
+	 * The EventImpulse for one day while events push a product (GDD 13).
+	 *
+	 * Moves the price a fraction Rate of the way from OldPrice to
+	 * BasePrice * (1 + Target), and cancels that day's mean reversion so the
+	 * two do not fight: an event holds the price up for as long as it runs,
+	 * and the pull takes it back down once it ends. Noise still applies on
+	 * top, and the band clamp still has the last word.
+	 *
+	 * A target reached gradually rather than jumped to is deliberate: the
+	 * climb shows on the chart, so a player who read the signal right still
+	 * has a day or two to act on it.
+	 *
+	 * @param Target Summed event targets for the product, fraction of base.
+	 *        0 means no event: the result is 0 and the day is ordinary.
+	 * @return Fraction of BasePrice, ready for AdvanceOneDay.
+	 */
+	static double EventImpulse(double OldPrice, double NormalPrice, double BasePrice,
+		ERiskBand Band, double Target, double Rate);
+
+	/**
+	 * SimulateSeries with events: TargetForDay(Day) gives the summed event
+	 * target on that day, as UEventSubsystem::GetPriceTarget does. With a
+	 * function that always returns 0 this is exactly SimulateSeries.
+	 */
+	static TArray<double> SimulateSeriesWithEvents(int32 BaseSeed, FName ProductID,
+		double BasePrice, ERiskBand Band, int32 Days, double Rate,
+		TFunctionRef<double(int32 Day)> TargetForDay);
 
 	/**
 	 * Simulate a product from day 0 to Days, from scratch.

@@ -66,6 +66,45 @@ double FMarketModel::AdvanceOneDay(
 	return ClampToBand(NewPrice, BasePrice, Band);
 }
 
+double FMarketModel::EventImpulse(double OldPrice, double NormalPrice, double BasePrice,
+	ERiskBand Band, double Target, double Rate)
+{
+	if (Target == 0.0 || BasePrice <= 0.0)
+	{
+		return 0.0;
+	}
+	const FRiskBandParams Params = FProductRow::GetRiskBandParams(Band);
+	const double Wanted = Rate * (BasePrice * (1.0 + Target) - OldPrice);
+	const double PullTerm = Params.MeanReversionPull * (NormalPrice - OldPrice);
+	// AdvanceOneDay adds PullTerm back; subtracting it here leaves only Wanted.
+	return (Wanted - PullTerm) / BasePrice;
+}
+
+TArray<double> FMarketModel::SimulateSeriesWithEvents(int32 BaseSeed, FName ProductID,
+	double BasePrice, ERiskBand Band, int32 Days, double Rate,
+	TFunctionRef<double(int32 Day)> TargetForDay)
+{
+	TArray<double> Series;
+	if (Days < 0)
+	{
+		return Series;
+	}
+
+	Series.Reserve(Days + 1);
+	Series.Add(BasePrice);
+
+	FRandomStream Stream = MakeProductStream(BaseSeed, ProductID);
+	double Price = BasePrice;
+	for (int32 Day = 1; Day <= Days; ++Day)
+	{
+		const double Impulse = EventImpulse(Price, BasePrice, BasePrice, Band, TargetForDay(Day), Rate);
+		Price = AdvanceOneDay(Price, /*NormalPrice=*/BasePrice, BasePrice, Band,
+			Impulse, /*PlayerPressure=*/0.0, Stream);
+		Series.Add(Price);
+	}
+	return Series;
+}
+
 TArray<double> FMarketModel::SimulateSeries(int32 BaseSeed, FName ProductID,
 	double BasePrice, ERiskBand Band, int32 Days)
 {

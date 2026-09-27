@@ -5,18 +5,25 @@
 #include "Core/SaveSubsystem.h"
 #include "Core/TimeSubsystem.h"
 #include "Data/ProductCatalogSubsystem.h"
+#include "Core/DeadlineSettings.h"
 #include "Economy/MarketModel.h"
+#include "Events/EventSubsystem.h"
 #include "Engine/GameInstance.h"
 
 void UMarketSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Collection.InitializeDependency(UProductCatalogSubsystem::StaticClass());
 	Collection.InitializeDependency(UTimeSubsystem::StaticClass());
+	Collection.InitializeDependency(UEventSubsystem::StaticClass());
 	Super::Initialize(Collection);
 
 	if (UTimeSubsystem* Time = GetTime())
 	{
 		Time->OnDayChanged.AddDynamic(this, &UMarketSubsystem::HandleDayChanged);
+	}
+	if (UEventSubsystem* Events = GetEvents())
+	{
+		EventCalendarHandle = Events->OnCalendarChanged.AddUObject(this, &UMarketSubsystem::HandleEventCalendarChanged);
 	}
 	if (UProductCatalogSubsystem* Catalogue = GetCatalogue())
 	{
@@ -34,8 +41,18 @@ void UMarketSubsystem::Deinitialize()
 	{
 		Catalogue->OnCatalogueReloaded.RemoveDynamic(this, &UMarketSubsystem::HandleCatalogueReloaded);
 	}
+	if (UEventSubsystem* Events = GetEvents())
+	{
+		Events->OnCalendarChanged.Remove(EventCalendarHandle);
+	}
 	States.Reset();
 	Super::Deinitialize();
+}
+
+UEventSubsystem* UMarketSubsystem::GetEvents() const
+{
+	const UGameInstance* GI = GetGameInstance();
+	return GI ? GI->GetSubsystem<UEventSubsystem>() : nullptr;
 }
 
 UProductCatalogSubsystem* UMarketSubsystem::GetCatalogue() const
@@ -78,6 +95,12 @@ void UMarketSubsystem::HandleDayChanged(int32 NewDay)
 	OnMarketDayAdvanced.Broadcast(NewDay);
 }
 
+void UMarketSubsystem::HandleEventCalendarChanged()
+{
+	States.Reset();
+	OnMarketDayAdvanced.Broadcast(GetMarketDay());
+}
+
 void UMarketSubsystem::HandleCatalogueReloaded()
 {
 	// Cached series were built from the old base prices and bands, and the
@@ -113,6 +136,7 @@ UMarketSubsystem::FProductMarketState* UMarketSubsystem::FindOrCreateState(FName
 	}
 
 	FProductMarketState NewState;
+	NewState.ProductID = ProductID;
 	NewState.BasePrice = static_cast<double>(Row->BasePrice);
 	NewState.NormalPrice = NewState.BasePrice;
 	NewState.Price = NewState.BasePrice;
@@ -131,15 +155,24 @@ void UMarketSubsystem::CatchUp(FProductMarketState& State, int32 TargetDay) cons
 		return;
 	}
 
+	const UEventSubsystem* Events = GetEvents();
+	const double Rate = UDeadlineSettings::Get().EventApproachRate;
+
 	for (int32 Day = State.LastDay + 1; Day <= TargetDay; ++Day)
 	{
+		// The seeded event calendar (GDD 13). A pure function of seed and day
+		// like the rest of this loop, so lazy catch-up still lands on the
+		// numbers a product watched every day would have.
+		const double Target = Events ? Events->GetPriceTarget(State.ProductID, Day) : 0.0;
+		const double Impulse = FMarketModel::EventImpulse(
+			State.Price, State.NormalPrice, State.BasePrice, State.Band, Target, Rate);
+
 		State.Price = FMarketModel::AdvanceOneDay(
 			State.Price,
 			State.NormalPrice,
 			State.BasePrice,
 			State.Band,
-			// Month 4 wires the seeded event calendar in here (GDD 13).
-			/*EventImpulse=*/0.0,
+			Impulse,
 			// Month 7 wires hoarding pressure in here (GDD 7.8).
 			/*PlayerPressure=*/0.0,
 			State.Stream);
@@ -290,6 +323,12 @@ TArray<double> UMarketSubsystem::PeekSeries(FName ProductID, int32 Days) const
 	{
 		return TArray<double>();
 	}
-	return FMarketModel::SimulateSeries(GetRunSeed(), ProductID,
-		static_cast<double>(Row->BasePrice), Row->RiskBand, Days);
+	const UEventSubsystem* Events = GetEvents();
+	return FMarketModel::SimulateSeriesWithEvents(GetRunSeed(), ProductID,
+		static_cast<double>(Row->BasePrice), Row->RiskBand, Days,
+		UDeadlineSettings::Get().EventApproachRate,
+		[Events, ProductID](int32 Day)
+		{
+			return Events ? static_cast<double>(Events->GetPriceTarget(ProductID, Day)) : 0.0;
+		});
 }
