@@ -212,7 +212,7 @@ void UForecastScreenWidget::ShowDetail(const FForecastEntry* Entry)
 		{
 			DetailOddsText->SetText(Entry->DaysAway <= 0
 				? NSLOCTEXT("Deadline", "ForecastEndsToday", "Bugün bitiyor")
-				: FText::Format(NSLOCTEXT("Deadline", "ForecastEndsIn", "{0} gün daha sürer (gün {1}'e kadar)"),
+				: FText::Format(NSLOCTEXT("Deadline", "ForecastEndsIn", "{0} gün daha sürer ({1}. güne kadar)"),
 					FText::AsNumber(Entry->DaysAway), FText::AsNumber(Entry->Day)));
 			DetailOddsText->SetColorAndOpacity(FSlateColor(DeadlineUI::Accent));
 		}
@@ -379,7 +379,7 @@ void UForecastScreenWidget::RefreshCommitPanel()
 		if (CommitBudgetText)
 		{
 			CommitBudgetText->SetText(FText::Format(NSLOCTEXT("Deadline", "CommitLockedInfo",
-				"Kilitli kalan {0} — yalnızca {1} alımına harcanır, gün {2}'de serbest kalır. Değerlendirme: gün {3}."),
+				"Kilitli kalan {0} — yalnızca {1} alımına harcanır, {2}. gün serbest kalır. Değerlendirme: {3}. gün."),
 				ForecastFormat::Money(Existing.LockRemaining), Product,
 				FText::AsNumber(Existing.ExpectedDay), FText::AsNumber(Existing.GetResolveDay())));
 			CommitBudgetText->SetColorAndOpacity(FSlateColor(DeadlineUI::Muted));
@@ -447,7 +447,7 @@ void UForecastScreenWidget::RefreshCommitPanel()
 			break;
 		default:
 			Budgeted = FText::Format(NSLOCTEXT("Deadline", "CommitBudget",
-				"{0} kilitlenir, gün {1}'e kadar. Değerlendirme: gün {2}."),
+				"{0} kilitlenir, {1}. güne kadar. Değerlendirme: {2}. gün."),
 				ForecastFormat::Money(Budget), FText::AsNumber(Entry->Day), FText::AsNumber(Entry->Day + CommitHold));
 			break;
 		}

@@ -262,6 +262,14 @@ bool FDeadlineForecastCommitmentTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Verdict matches the calendar"), Resolved.bEventHappened, bTruth);
 		const float Expected = Resolved.Proceeds + Economy->GetSellPrice(Product) * (Resolved.BoughtContainers - Resolved.SoldContainers) - Resolved.Spent;
 		TestEqual(TEXT("Result = proceeds + rest - spent"), Resolved.Result, Expected, 0.01f);
+		TestTrue(TEXT("A lesson is picked"), Resolved.Lesson != ECommitmentLesson::None);
+		TestEqual(TEXT("Lesson follows the numbers"), Resolved.Lesson, UForecastSubsystem::PickLesson(Resolved));
+		const UDeadlineSettings& S = UDeadlineSettings::Get();
+		TestEqual(TEXT("Break-even rise from the frictions"), Resolved.BreakEvenRise,
+			(1.f + S.BuyPremium + S.HandlingCost) / (1.f - S.SellDiscount - S.HandlingCost) - 1.f, 0.0001f);
+		TestTrue(TEXT("Peak inside the window"), Resolved.PeakDay >= Target.Day && Resolved.PeakDay <= Target.Day + 2);
+		TestTrue(TEXT("Best sale at least the actual result when all were still held"),
+			Resolved.SoldContainers > 0 || Resolved.BestResult >= Resolved.Result - 0.01f);
 	}
 
 	// --- Cancel ----------------------------------------------------------------------------
@@ -287,6 +295,33 @@ bool FDeadlineForecastCommitmentTest::RunTest(const FString& Parameters)
 	}
 
 	GI->Shutdown();
+	return true;
+}
+
+// The "neden yanıldım" choice, case by case, from hand-made numbers.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDeadlineForecastLessonTest,
+	"Deadline.Forecast.Lesson",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FDeadlineForecastLessonTest::RunTest(const FString& Parameters)
+{
+	auto Make = [](bool bHappened, int32 Bought, float Result, float Best)
+	{
+		FForecastCommitment C;
+		C.bEventHappened = bHappened;
+		C.BoughtContainers = Bought;
+		C.TargetContainers = FMath::Max(1, Bought);
+		C.Result = Result;
+		C.BestResult = Best;
+		return C;
+	};
+	TestEqual(TEXT("True call, profit"), UForecastSubsystem::PickLesson(Make(true, 4, 500.f, 800.f)), ECommitmentLesson::GoodCall);
+	TestEqual(TEXT("True call, nothing bought"), UForecastSubsystem::PickLesson(Make(true, 0, 0.f, 900.f)), ECommitmentLesson::MissedIt);
+	TestEqual(TEXT("True call, loss, peak would have won"), UForecastSubsystem::PickLesson(Make(true, 4, -200.f, 300.f)), ECommitmentLesson::HeldTooLong);
+	TestEqual(TEXT("True call, loss, no sale could win"), UForecastSubsystem::PickLesson(Make(true, 4, -200.f, -50.f)), ECommitmentLesson::EatenBySpread);
+	TestEqual(TEXT("False rumour, loss"), UForecastSubsystem::PickLesson(Make(false, 4, -300.f, -100.f)), ECommitmentLesson::FalseRumour);
+	TestEqual(TEXT("False rumour, nothing bought"), UForecastSubsystem::PickLesson(Make(false, 0, 0.f, -100.f)), ECommitmentLesson::FalseRumourSpared);
+	TestEqual(TEXT("False rumour, profit anyway"), UForecastSubsystem::PickLesson(Make(false, 4, 120.f, 200.f)), ECommitmentLesson::LuckyWin);
 	return true;
 }
 

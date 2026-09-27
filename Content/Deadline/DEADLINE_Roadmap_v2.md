@@ -248,7 +248,7 @@ Bu ay ikiye bölünür: ilk iki hafta **vitrin**, son iki hafta **oynanış**.
 - [x] Haber/radyo katmanı (aynı olay verisinden beslenir)
 - [x] Tahmin panosu: sinyaller, güven yüzdesi, maruziyet
 - [x] Taahhüt akışı: miktar + bütçe kilidi + süre
-- [ ] Sonuç ekranı: doğru/yanlış + **"neden yanıldım" kartı**
+- [x] Sonuç ekranı: doğru/yanlış + **"neden yanıldım" kartı**
 - [ ] Not defteri (geçmiş tahminler)
 - [ ] **Gün sonu özeti ekranı**
 - [ ] Büyük geri bildirim durumları: KAZANÇ / KAYIP / KRİZ

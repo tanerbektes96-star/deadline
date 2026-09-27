@@ -45,7 +45,7 @@ void UForecastCardWidget::SetEntry(const FForecastEntry& Entry)
 		{
 			When = Entry.DaysAway <= 0
 				? NSLOCTEXT("Deadline", "ForecastLastDay", "SÜRÜYOR · bugün bitiyor")
-				: FText::Format(NSLOCTEXT("Deadline", "ForecastUntil", "SÜRÜYOR · gün {0}'e kadar"), FText::AsNumber(Entry.Day));
+				: FText::Format(NSLOCTEXT("Deadline", "ForecastUntil", "SÜRÜYOR · {0}. güne kadar"), FText::AsNumber(Entry.Day));
 		}
 		if (Entry.CommitmentID != INDEX_NONE)
 		{

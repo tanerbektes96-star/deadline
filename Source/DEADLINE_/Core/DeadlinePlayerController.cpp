@@ -6,7 +6,9 @@
 #include "Core/DeadlineCheatManager.h"
 #include "Core/DeadlineSettings.h"
 #include "Engine/GameInstance.h"
+#include "Forecast/ForecastSubsystem.h"
 #include "Travel/TravelSubsystem.h"
+#include "UI/CommitmentResultWidget.h"
 
 ADeadlinePlayerController::ADeadlinePlayerController()
 {
@@ -27,6 +29,10 @@ void ADeadlinePlayerController::BeginPlay()
 			Travel->OnTravelStarted.AddUniqueDynamic(this, &ADeadlinePlayerController::HandleTravelStarted);
 			Travel->OnTravelFinished.AddUniqueDynamic(this, &ADeadlinePlayerController::HandleTravelFinished);
 		}
+		if (UForecastSubsystem* Forecast = GI->GetSubsystem<UForecastSubsystem>())
+		{
+			Forecast->OnCommitmentResolved.AddUniqueDynamic(this, &ADeadlinePlayerController::HandleCommitmentResolved);
+		}
 	}
 }
 
@@ -38,6 +44,10 @@ void ADeadlinePlayerController::EndPlay(const EEndPlayReason::Type Reason)
 		{
 			Travel->OnTravelStarted.RemoveDynamic(this, &ADeadlinePlayerController::HandleTravelStarted);
 			Travel->OnTravelFinished.RemoveDynamic(this, &ADeadlinePlayerController::HandleTravelFinished);
+		}
+		if (UForecastSubsystem* Forecast = GI->GetSubsystem<UForecastSubsystem>())
+		{
+			Forecast->OnCommitmentResolved.RemoveDynamic(this, &ADeadlinePlayerController::HandleCommitmentResolved);
 		}
 	}
 	Super::EndPlay(Reason);
@@ -175,5 +185,72 @@ void ADeadlinePlayerController::ToggleForecastScreen()
 	else
 	{
 		OpenForecastScreen();
+	}
+}
+
+// --- Result cards -----------------------------------------------------------------
+
+void ADeadlinePlayerController::HandleCommitmentResolved(const FForecastCommitment& Commitment)
+{
+	ShowResultCard(Commitment.ID);
+}
+
+bool ADeadlinePlayerController::IsResultCardOpen() const
+{
+	return ResultCard != nullptr && ResultCard->IsInViewport();
+}
+
+void ADeadlinePlayerController::ShowResultCard(int32 CommitmentID)
+{
+	ResultQueue.AddUnique(CommitmentID);
+	ShowNextResult();
+}
+
+void ADeadlinePlayerController::ShowNextResult()
+{
+	const UGameInstance* GI = GetGameInstance();
+	const UForecastSubsystem* Forecast = GI ? GI->GetSubsystem<UForecastSubsystem>() : nullptr;
+	while (!IsResultCardOpen() && ResultQueue.Num() > 0 && Forecast)
+	{
+		FForecastCommitment Commitment;
+		const bool bFound = Forecast->GetCommitment(ResultQueue[0], Commitment);
+		ResultQueue.RemoveAt(0);
+		if (!bFound || Commitment.State != ECommitmentState::Resolved)
+		{
+			continue;
+		}
+		OpenScreen(UDeadlineSettings::Get().CommitmentResultWidget, TEXT("Commitment Result Widget"), ResultCard);
+		if (UCommitmentResultWidget* Card = Cast<UCommitmentResultWidget>(ResultCard))
+		{
+			Card->SetCommitment(Commitment, ResultQueue.Num());
+		}
+		UE_LOG(LogTemp, Log, TEXT("[Deadline] Result card: commitment #%d, %s, %+.0f."),
+			Commitment.ID, *UEnum::GetValueAsString(Commitment.Lesson), Commitment.Result);
+		return;
+	}
+}
+
+void ADeadlinePlayerController::CloseResultCard()
+{
+	CloseScreen(ResultCard);
+	if (ResultQueue.Num() > 0)
+	{
+		ShowNextResult();
+		return;
+	}
+	// The card may have come up over another screen: hand that one the mouse
+	// back rather than dropping the player into walking mode under it.
+	for (UUserWidget* Under : { MarketScreen.Get(), TravelScreen.Get(), ForecastScreen.Get() })
+	{
+		if (Under && Under->IsInViewport())
+		{
+			bShowMouseCursor = true;
+			FInputModeGameAndUI Mode;
+			Mode.SetWidgetToFocus(Under->TakeWidget());
+			Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			Mode.SetHideCursorDuringCapture(false);
+			SetInputMode(Mode);
+			break;
+		}
 	}
 }

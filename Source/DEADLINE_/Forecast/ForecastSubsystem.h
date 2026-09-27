@@ -149,6 +149,29 @@ struct FForecastEntry
 	int32 CommitmentID = INDEX_NONE;
 };
 
+/** The one reason a result came out the way it did (GDD 4 step 6: the
+    "neden yanıldım" card). Picked by UForecastSubsystem when it judges, from
+    what is public by then; the result card and the notebook put it in words. */
+UENUM(BlueprintType)
+enum class ECommitmentLesson : uint8
+{
+	None,
+	/** It happened and you made money. */
+	GoodCall,
+	/** It happened, but you bought nothing: the gain you walked past. */
+	MissedIt,
+	/** It happened, but the rise never covered the buy/sell spread. */
+	EatenBySpread,
+	/** It happened and the rise was enough, but you held past the peak. */
+	HeldTooLong,
+	/** The rumour was false and it cost you. Odds, not a mistake. */
+	FalseRumour,
+	/** The rumour was false and you had bought nothing: no harm done. */
+	FalseRumourSpared,
+	/** The rumour was false, yet the price went your way anyway. */
+	LuckyWin
+};
+
 UENUM(BlueprintType)
 enum class ECommitmentState : uint8
 {
@@ -234,6 +257,38 @@ struct FForecastCommitment
 	/** Proceeds + value of the unsold rest - Spent. */
 	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
 	float Result = 0.f;
+
+	/** Market price on the day committed, before any mark-up. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float MarketPriceAtCommit = 0.f;
+
+	/** First day the event was over, or INDEX_NONE if it never ran. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 EventEndDay = INDEX_NONE;
+
+	/** Best day to have sold, expected day to resolve day, and what a
+	    buyer would have paid for one container on it. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 PeakDay = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float PeakSellPrice = 0.f;
+
+	/** Highest market price in the window over MarketPriceAtCommit, - 1. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float PeakRise = 0.f;
+
+	/** The rise a buy-and-sell needs just to break even, from the frictions. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float BreakEvenRise = 0.f;
+
+	/** Selling everything at the peak: with what you bought, or, if you
+	    bought nothing, with the amount you committed to. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float BestResult = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	ECommitmentLesson Lesson = ECommitmentLesson::None;
 
 	int32 GetResolveDay() const { return ExpectedDay + HoldDays; }
 	bool IsLive() const { return State == ECommitmentState::Open || State == ECommitmentState::Holding; }
@@ -323,6 +378,12 @@ private:
 	FForecastCommitment* FindByID(int32 CommitmentID);
 	void CloseLock(FForecastCommitment& C);
 	void Judge(FForecastCommitment& C);
+
+public:
+	/** Pick the lesson from a judged commitment's numbers. Pure, for tests. */
+	static ECommitmentLesson PickLesson(const FForecastCommitment& C);
+
+private:
 	void AdvanceCommitments(int32 Today);
 
 	UFUNCTION()

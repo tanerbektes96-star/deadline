@@ -1052,6 +1052,32 @@ void UDeadlineCheatManager::Dl_Commitments()
 	}
 }
 
+void UDeadlineCheatManager::Dl_ShowResult(int32 CommitmentID)
+{
+	const UForecastSubsystem* Forecast = GetSub<UForecastSubsystem>(this);
+	ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOuterAPlayerController());
+	if (!Forecast || !PC)
+	{
+		return;
+	}
+	if (CommitmentID <= 0)
+	{
+		for (const FForecastCommitment& C : Forecast->GetCommitments())
+		{
+			if (C.State == ECommitmentState::Resolved)
+			{
+				CommitmentID = C.ID;
+			}
+		}
+	}
+	if (CommitmentID <= 0)
+	{
+		Report(TEXT("No judged commitment yet."));
+		return;
+	}
+	PC->ShowResultCard(CommitmentID);
+}
+
 void UDeadlineCheatManager::Dl_OpenMarket()
 {
 	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOuterAPlayerController()))

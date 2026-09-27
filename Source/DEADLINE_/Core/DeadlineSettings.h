@@ -47,6 +47,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Data")
 	TSoftClassPtr<UUserWidget> ForecastScreenWidget;
 
+	/** WBP_CommitmentResult — the result card when a commitment is judged. */
+	UPROPERTY(Config, EditAnywhere, Category = "Data")
+	TSoftClassPtr<UUserWidget> CommitmentResultWidget;
+
 	// --- Language ---------------------------------------------------------
 
 	/** The game's language: "tr" or "en". Turkish by default. Separate from

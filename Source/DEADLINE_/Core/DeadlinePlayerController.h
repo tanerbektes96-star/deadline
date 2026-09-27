@@ -66,6 +66,17 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
 	bool IsForecastScreenOpen() const;
 
+	/** Queue the result card for a judged commitment (GDD 4 step 6). Cards
+	    show one at a time; closing one brings up the next. */
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void ShowResultCard(int32 CommitmentID);
+
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void CloseResultCard();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
+	bool IsResultCardOpen() const;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
@@ -74,6 +85,8 @@ protected:
 	    for those seconds, not someone who can walk out of the cab. */
 	UFUNCTION() void HandleTravelStarted(const struct FTravelQuote& Quote);
 	UFUNCTION() void HandleTravelFinished(FName ArrivedAt);
+
+	UFUNCTION() void HandleCommitmentResolved(const struct FForecastCommitment& Commitment);
 
 private:
 	/** Build a screen from a soft class, show it, and give it the mouse.
@@ -93,6 +106,14 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> ForecastScreen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> ResultCard;
+
+	/** Commitment IDs waiting for their card, oldest first. */
+	TArray<int32> ResultQueue;
+
+	void ShowNextResult();
 
 	UPROPERTY(Transient)
 	FName TravelVehicleKey;

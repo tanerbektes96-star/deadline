@@ -444,6 +444,88 @@ def build_screen(card_bp):
     log("WBP_ForecastScreen: {0} widgets, CardWidgetClass set".format(len(TOOLS.get_widget_names(bp))))
 
 
+# --- WBP_CommitmentResult --------------------------------------------------
+
+def build_result_card():
+    bp = widget_blueprint("WBP_CommitmentResult", unreal.CommitmentResultWidget)
+    TOOLS.clear_widget_tree(bp)
+
+    canvas = add(bp, unreal.CanvasPanel, "RootCanvas", None)
+    dim = add(bp, unreal.Border, "Dim", canvas)
+    dim.set_editor_property("background", brush(unreal.LinearColor(0.0, 0.0, 0.0, 0.62), radius=0.0))
+    fill_canvas(dim)
+
+    width = add(bp, unreal.SizeBox, "CardWidth", dim)
+    width.set_width_override(660.0)
+    align_slot(width, h=H_CENTER, v=V_CENTER)
+
+    # White tint: the outcome colour is set in code with SetBrushColor and
+    # shows as the card's edge.
+    edge = add(bp, unreal.Border, "ResultFrame", width)
+    edge.set_editor_property("background", brush(WHITE, radius=3.0))
+    edge.set_editor_property("brush_color", MUTED)
+    edge.set_editor_property("padding", margin(3.0, 3.0, 3.0, 3.0))
+
+    card = add(bp, unreal.Border, "CardBody", edge)
+    card.set_editor_property("background", brush(PANEL, radius=2.0))
+    card.set_editor_property("padding", margin(30.0, 24.0, 30.0, 22.0))
+    align_slot(card)
+
+    column = add(bp, unreal.VerticalBox, "CardColumn", card)
+    align_slot(column)
+
+    verdict = add(bp, unreal.TextBlock, "VerdictText", column)
+    text(verdict, 15, BODY, HEADING)
+    box_slot(verdict, size=AUTO)
+    title = add(bp, unreal.TextBlock, "TitleText", column)
+    text(title, 30, BODY, HEADING, wrap=True)
+    box_slot(title, size=AUTO, padding=margin(0.0, 2.0, 0.0, 2.0))
+    odds = add(bp, unreal.TextBlock, "OddsText", column)
+    text(odds, 14, MUTED, LABEL, wrap=True)
+    box_slot(odds, size=AUTO, padding=margin(0.0, 0.0, 0.0, 14.0))
+
+    outcome = add(bp, unreal.TextBlock, "OutcomeText", column)
+    text(outcome, 40, BODY, NUMBER)
+    box_slot(outcome, size=AUTO, padding=margin(0.0, 0.0, 0.0, 10.0))
+
+    ledger = add(bp, unreal.TextBlock, "LedgerText", column)
+    text(ledger, 15, BODY, LABEL, wrap=True)
+    box_slot(ledger, size=AUTO, padding=margin(0.0, 0.0, 0.0, 16.0))
+
+    lesson_frame = add(bp, unreal.Border, "LessonFrame", column)
+    lesson_frame.set_editor_property("background", brush(RAISED, LINE))
+    lesson_frame.set_editor_property("padding", margin(16.0, 12.0, 16.0, 14.0))
+    box_slot(lesson_frame, size=AUTO, padding=margin(0.0, 0.0, 0.0, 18.0))
+    lesson_column = add(bp, unreal.VerticalBox, "LessonColumn", lesson_frame)
+    align_slot(lesson_column)
+    lesson_title = add(bp, unreal.TextBlock, "LessonTitleText", lesson_column)
+    text(lesson_title, 15, ACCENT, HEADING)
+    box_slot(lesson_title, size=AUTO, padding=margin(0.0, 0.0, 0.0, 4.0))
+    lesson = add(bp, unreal.TextBlock, "LessonText", lesson_column)
+    text(lesson, 15, BODY, LABEL, wrap=True)
+    box_slot(lesson, size=AUTO)
+
+    bottom = add(bp, unreal.HorizontalBox, "CardBottomRow", column)
+    box_slot(bottom, size=AUTO)
+    queue = add(bp, unreal.TextBlock, "QueueText", bottom)
+    text(queue, 13, MUTED, LABEL)
+    box_slot(queue, size=FILL, v=V_CENTER)
+    close_box = add(bp, unreal.SizeBox, "CloseButtonBox", bottom)
+    close_box.set_min_desired_width(140.0)
+    close_box.set_height_override(38.0)
+    box_slot(close_box, size=AUTO, v=V_CENTER)
+    close = add(bp, unreal.Button, "CloseButton", close_box)
+    button_style(close, ACCENT, rgb("6E9DB8"), rgb("4A7690"))
+    align_slot(close)
+    close_label = add(bp, unreal.TextBlock, "CloseLabelText", close)
+    close_label.set_text("TAMAM")
+    text(close_label, 16, WHITE, HEADING, unreal.TextJustify.CENTER)
+    align_slot(close_label, h=H_CENTER, v=V_CENTER)
+
+    TOOLS.compile_and_save(bp)
+    log("WBP_CommitmentResult: {0} widgets".format(len(TOOLS.get_widget_names(bp))))
+
+
 # --- input: N -------------------------------------------------------------------
 
 def make_key(key_name):
@@ -488,6 +570,7 @@ def bind_n_key():
 def main():
     card = build_card()
     build_screen(card)
+    build_result_card()
     bind_n_key()
     unreal.log("[Deadline forecast-ui] ---- done ----")
     for line in _report:

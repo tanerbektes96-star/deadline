@@ -242,6 +242,10 @@ int32 UForecastSubsystem::Commit(FName EventID, FName ProductID, int32 Container
 	C.TargetContainers = Containers;
 	C.Budget = Budget;
 	C.BuyPriceAtCommit = Price;
+	if (const UMarketSubsystem* Market = GetMarket())
+	{
+		C.MarketPriceAtCommit = Market->GetPrice(ProductID);
+	}
 	C.LockRemaining = Budget;
 
 	UE_LOG(LogTemp, Log, TEXT("[Deadline] Commitment #%d: %s on %s, %d x %.0f locked, judged day %d."),
@@ -362,6 +366,7 @@ void UForecastSubsystem::Judge(FForecastCommitment& C)
 			if (E.EventID == C.EventID && E.StartDay == C.ExpectedDay && !E.bForced)
 			{
 				C.bEventHappened = true;
+				C.EventEndDay = E.EndDay;
 				break;
 			}
 		}
@@ -373,12 +378,59 @@ void UForecastSubsystem::Judge(FForecastCommitment& C)
 	const int32 Unsold = FMath::Max(0, C.BoughtContainers - C.SoldContainers);
 	const float RestValue = Economy ? Economy->GetSellPrice(C.ProductID) * Unsold : 0.f;
 	C.Result = C.Proceeds + RestValue - C.Spent;
+
+	// The review: what the best sale in the window would have been, and what
+	// rise the frictions ask for. Past prices only; nothing here is ahead of
+	// the clock.
+	const UDeadlineSettings& S = UDeadlineSettings::Get();
+	const float SellFactor = FMath::Max(0.f, 1.f - S.SellDiscount - S.HandlingCost);
+	const float BuyFactor = 1.f + S.BuyPremium + S.HandlingCost;
+	C.BreakEvenRise = SellFactor > 0.f ? BuyFactor / SellFactor - 1.f : 0.f;
+	float PeakMarket = 0.f;
+	C.PeakDay = C.ExpectedDay;
+	for (int32 Day = C.ExpectedDay; Day <= C.GetResolveDay() && Market; ++Day)
+	{
+		const float P = Market->GetPriceOnDay(C.ProductID, Day);
+		if (P > PeakMarket)
+		{
+			PeakMarket = P;
+			C.PeakDay = Day;
+		}
+	}
+	C.PeakSellPrice = PeakMarket * SellFactor;
+	C.PeakRise = C.MarketPriceAtCommit > 0.f ? PeakMarket / C.MarketPriceAtCommit - 1.f : 0.f;
+	C.BestResult = C.BoughtContainers > 0
+		? C.PeakSellPrice * C.BoughtContainers - C.Spent
+		: C.PeakSellPrice * C.TargetContainers - C.Budget;
+	C.Lesson = PickLesson(C);
 	C.State = ECommitmentState::Resolved;
 
 	UE_LOG(LogTemp, Log, TEXT("[Deadline] Commitment #%d judged: %s %s, bought %d, result %+.0f."),
 		C.ID, *C.EventID.ToString(), C.bEventHappened ? TEXT("happened") : TEXT("did not happen"),
 		C.BoughtContainers, C.Result);
 	OnCommitmentResolved.Broadcast(C);
+}
+
+ECommitmentLesson UForecastSubsystem::PickLesson(const FForecastCommitment& C)
+{
+	if (!C.bEventHappened)
+	{
+		if (C.BoughtContainers == 0)
+		{
+			return ECommitmentLesson::FalseRumourSpared;
+		}
+		return C.Result > 0.f ? ECommitmentLesson::LuckyWin : ECommitmentLesson::FalseRumour;
+	}
+	if (C.BoughtContainers == 0)
+	{
+		return ECommitmentLesson::MissedIt;
+	}
+	if (C.Result > 0.f)
+	{
+		return ECommitmentLesson::GoodCall;
+	}
+	// Lost money on a true call: either no sale could have won, or one could.
+	return C.BestResult > 0.f ? ECommitmentLesson::HeldTooLong : ECommitmentLesson::EatenBySpread;
 }
 
 void UForecastSubsystem::HandleTransaction(const FTransactionRecord& Record)

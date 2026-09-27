@@ -195,6 +195,10 @@ public:
 	UFUNCTION(exec)
 	void Dl_Commitments();
 
+	/** Show the result card for a judged commitment; 0 = the latest. */
+	UFUNCTION(exec)
+	void Dl_ShowResult(int32 CommitmentID = 0);
+
 	// --- Balance data ------------------------------------------------------
 
 	/** Re-read Content/Deadline/Data/DT_Products.csv into the running game.
