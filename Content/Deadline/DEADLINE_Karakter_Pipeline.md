@@ -9,6 +9,12 @@
 > kullandığı için 5. ayda Manny ile yazılan AnimBP ve AI kodu, 9. ayda mesh değişince
 > aynen çalışmaya devam eder.
 
+> **Durum (2026-09-27): V01 ile hat baştan sona çalışıyor.** V01 riglendi, Unreal'e
+> aktarıldı, ortak animasyon seti retarget edildi ve `LVL_Greybox`'ta NavMesh üzerinde
+> raf → tedarikçi → alıcı arasında devriye geziyor. Bölüm 5 ve 6'daki **"Gerçekleşen"**
+> kutuları, planın uygulamada nasıl kurulduğunu ve yolda çıkan tuzakları anlatır;
+> V02 ve sonrası bunlara göre yapılır.
+
 ---
 
 ## 1. Seçilen Yöntem ve Gerekçesi
@@ -24,6 +30,8 @@ Bütün karakterler, **UE5 Manny'nin kemik isimleri ve hiyerarşisiyle** (`root 
 | Blender'da yaptığım özel animasyonlar herkeste çalışır | Denetçinin sayım animasyonu, istenirse depo görevlisinde de oynar |
 | Leader Pose Component, Animation Budget Allocator uyumlu | GDD 19'daki NPC performans planıyla aynı |
 | 5. aydaki Manny placeholder'ları sorunsuz değişir | Kod tarafında sıfır değişiklik |
+
+İskelet Manny'nin **88 kemiğinin tamamını** taşır; `ik_foot_*`, `ik_hand_*`, `interaction`, `center_of_mass` dahil. Bunlar deform etmez ama atılmaz: `ABP_NPC_Base`'in ayak IK'sı (`CR_Mannequin_FootIK`) `ik_foot_*` kemiklerini hedef olarak kullanır.
 
 **Neden Tripo'nun kendi auto-rig'i değil?** Tripo'nun rig'i her karakter için ayrı, standart dışı bir iskelet üretir; her biri için ayrı retarget ve ayrı animasyon kopyası gerekir. Tripo rig'i sadece **yedek plan** olarak kalır.
 
@@ -342,6 +350,28 @@ DEADLINE_/ArtSource/Characters/V01_DepoGorevlisiA/V01_ref.png   (Tripo'ya verdi�
 6. Özel animasyonlar (bölüm 7).
 7. FBX dışa aktarım: Unreal ölçeğine uygun, `Add Leaf Bones` kapalı, sadece deform kemikleri.
 
+> **Gerçekleşen (V01):** Blender MCP oturum başında bağlanamadı (timeout); iş, Blender 5.2'yi
+> arka planda çalıştıran tek bir script'le yapıldı — tekrar çalıştırılabilir, elle adım yok:
+>
+> ```
+> blender -b --factory-startup V01_source.blend --python ArtSource/Tools/rig_v01.py
+> ```
+>
+> Çıktılar `ArtSource/Characters/V01_DepoGorevlisiA/` altında: `V01_rig.blend`,
+> `SKM_V01_DepoGorevlisiA.fbx`. Plandan farklar ve tuzaklar:
+>
+> | Konu | Ne yapıldı / neden |
+> |---|---|
+> | Ölçek | Tripo mesh'i ~1 m'ye normalize veriyor; bölüm 3'teki boya (V01: 183 cm) ölçeklenir |
+> | Poz | Tripo T-pose'u korunur. Manny iskeleti **T-pose'a çevrilip** mesh'e oturtulur, rest pose olarak kalır. Kemik eksenleri Manny'ninkiyle aynı tutulur |
+> | Eklemler | Mesh kesitlerinden ölçülüp script'e **elle** yazılır (omuz, dirsek, bilek, kalça, diz, ayak, parmaklar). Her karakter için yeniden ölçülür |
+> | Ağırlık | Otomatik ağırlık **yerine**: Manny mesh'i yeni rest pozuna bükülür, UE kalitesindeki ağırlıkları V01'e aktarılır; sonra yumuşatma, kemik başına en fazla 4 etki, normalize |
+> | Kemikler | 88 kemiğin tamamı dışa aktarılır (bkz. 1.1); "sadece deform" uygulanmadı |
+> | **Birim — kritik** | FBX **santimetre** ile yazılır (sahne birim ölçeği 0.01, rig ve mesh ×100 uygulanmış). Metreyle yazılınca dönüşüm `root` kemiğine ×100 ölçek olarak gömülüyor; bind pozda her şey doğru görünürken retarget edilen animasyonlarda iskelet pelvisin içine çöküyor |
+> | Test | Deformasyon testi render'la yapılır (kolları indir, dirsek, diz, gövde bükme) |
+>
+> Bilinen eksik: eldivenli, birleşik parmaklar low-poly; yakın el pozlarında kaba görünebilir.
+
 ---
 
 ## 6. Unreal Aşaması
@@ -361,6 +391,54 @@ Content/Deadline/Characters/
   Player/        FP kollar
   Props/         Pano, tablet, kamera, fener, baston…
 ```
+
+> **Gerçekleşen (V01):** Hepsi script'le kurulur. Editör kapalıyken:
+>
+> ```
+> ArtSource/Tools/run_ue_setup_v01.ps1
+> ```
+>
+> Önce `Shared/`, `NPC/V01/` ve `Maps/Test/` klasörlerini Geri Dönüşüm Kutusu'na taşır,
+> sonra `ue_setup_v01.py`'yi çalıştırır. Oluşanlar:
+>
+> | Yer | İçerik |
+> |---|---|
+> | `Shared/` | `SK_Deadline_Human`, `IK_Manny`, `IK_Deadline_Human`, `RTG_Manny_to_Deadline_Human`, `BS_Locomotion`, `ABP_NPC_Base` |
+> | `Shared/Anims/` | Third Person **Unarmed** setinin 26 animasyonu: Idle, 16 yönlü Walk/Jog, Jump/Fall/Land, Dash, WallJump, Attack'lar |
+> | `NPC/V01/` | `SKM_V01_DepoGorevlisiA`, Physics Asset, materyal + dokular, `BP_NPC_V01` |
+>
+> `ABP_NPC_Base` ve `BS_Locomotion`, Third Person şablonundaki `ABP_Unarmed` ve `BS_Idle_Walk_Run`'ın
+> retarget edilmiş kopyalarıdır. Role özel slot (montage) katmanı henüz eklenmedi. Game Animation
+> Sample (madde 2) eklenmedi.
+>
+> **Yolda çıkan tuzaklar (UE 5.8):**
+>
+> | Belirti | Sebep ve çözüm |
+> |---|---|
+> | Oyunda bacaklar adım atmıyor, dizler çömelir gibi bükülüyor; üst gövde doğru yürüyor | Retargeter `ik_foot_*` kemiklerini taşımıyor, T-pozda kalıyorlar; ayak IK'sı ayakları oraya çekiyor. Retargeter'a **Pin Bones** adımı eklendi: `ik_foot_l/r ← foot_l/r`, `ik_hand_* ← hand_*`. Blender'daki kontrollerde görünmez, sadece oyun içinde çıkar |
+> | Oyunda anim instance hiç oluşmuyor | Skeleton `Shared/`'a taşınınca mesh'teki referans sadece bellekte güncellendi; mesh yeniden kaydedilmeyince diskte ölü yolu gösteriyordu. Script taşımadan sonra mesh'i zorla kaydediyor ve kontrol ediyor |
+> | Physics Asset oluşmuyor | Yeni FBX importer'ı (Interchange) atlıyor. Import eski FBX yolundan yapılıyor (`Interchange.FeatureFlags.Import.FBX 0`) |
+> | Metallic dokusu gelmiyor | Eski FBX importer'ı almıyor. V01'de değeri neredeyse sıfır (kumaş), etkisi yok. Metal ağırlıklı bir karakterde elle bağlanmalı |
+> | Aynı oturumda silip yeniden kurunca eksik/eski asset kalıyor | Silme işi editör açılmadan diskte yapılıyor (`run_ue_setup_v01.ps1`) |
+>
+> **NPC hareketi (C++, `Source/DEADLINE_/NPC/`):**
+>
+> - `ADeadlineNPCCharacter` — bütün yürüyen NPC'lerin temeli. Level'daki her örneğe
+>   `PatrolPoints`, `PauseAtPoint`, `WanderRadius` verilir. Hız 300 cm/s: blendspace'teki yürüme
+>   örneği bu hızda, farklı hızda ayaklar kayar. Yol takibi ivmeyle yürür; yoksa ABP karakteri
+>   duruyor sayar ve NPC Idle pozunda kayar.
+> - `ADeadlineNPCController` — Tick'siz. Noktaları sırayla gezer, nokta yoksa NavMesh üzerinde
+>   rastgele dolaşır, ulaşamadığı noktayı log'a yazıp sonrakine geçer.
+> - Yeni karakter = `DeadlineNPCCharacter`'dan türeyen yeni bir Blueprint + farklı mesh.
+>
+> **Level'a yerleştirme:** `Content/Deadline/Core/setup_npc_v01.py`, `LVL_Greybox`'a depo
+> NavMesh'ini, üç devriye noktasını ve V01'i ekler. Tekrar çalıştırılabilir, elle kaydırılmış
+> actor'lara dokunmaz. Editör içinden *Tools → Execute Python Script* ile çalışır.
+>
+> **Testler:** `ArtSource/Tools/ue_test_npc_v01.py` ayrı bir test level'ında
+> (`Maps/Test/LVL_Test_NPC_V01`) iki nokta arasına duvar koyup NPC'nin etrafından dolaştığını ve
+> adım attığını ölçer. `-ExecCmds="py <dosya>"` ile çalıştırılır; `-ExecutePythonScript` testi
+> bitmeden editörü kapatır.
 
 ---
 
@@ -386,14 +464,20 @@ Content/Deadline/Characters/
 
 ## 8. Sıradaki Adımlar
 
-| # | Kim | İş |
-|---|---|---|
-| 1 | Sen | Blender kur (4.2+ LTS), Blender MCP eklentisini kur ve bağla (bölüm 9) |
-| 2 | Sen | Unreal'e Third Person paketini ekle; `SK_Mannequin`'i FBX olarak `ArtSource/Mannequin/` altına dışa aktar |
-| 3 | Sen | V01 görselini üret → Tripo → GLB'yi `ArtSource/Characters/V01_DepoGorevlisiA/` altına koy |
-| 4 | Ben | Blender'da V01'i temizle, Manny iskeletine rigle, deformasyon testini göster |
-| 5 | Sen + ben | Unreal'e aktar, retarget, V01 depoda yürüsün |
-| 6 | — | Hat çalışıyorsa kalan 17 karakter aynı adımlarla (9. ayda) |
+| # | Kim | İş | Durum |
+|---|---|---|---|
+| 1 | Sen | Blender kur (4.2+ LTS), Blender MCP eklentisini kur ve bağla (bölüm 9) | ✅ Blender 5.2 |
+| 2 | Sen | Unreal'e Third Person paketini ekle; `SK_Mannequin`'i FBX olarak `ArtSource/Mannequin/` altına dışa aktar | ✅ |
+| 3 | Sen | V01 görselini üret → Tripo → GLB'yi `ArtSource/Characters/V01_DepoGorevlisiA/` altına koy | ✅ |
+| 4 | Ben | Blender'da V01'i temizle, Manny iskeletine rigle, deformasyon testini göster | ✅ 2026-09-26 |
+| 5 | Sen + ben | Unreal'e aktar, retarget, V01 depoda yürüsün | ✅ 2026-09-27 |
+| 6 | — | Hat çalışıyorsa kalan 17 karakter aynı adımlarla (9. ayda) | Bekliyor |
+
+**V02 ve sonrası için farklar.** Bölüm 6'daki kurulum script'i V01'e özeldir: `Shared/`
+klasörünü her çalıştırmada silip baştan kurar. Sonraki karakterler **mevcut
+`SK_Deadline_Human`'ın üstüne** import edilecek; bunun için ayrı, `Shared/`'a dokunmayan bir
+import script'i yazılacak. Blender tarafında `rig_v01.py` kopyalanır; boy ve eklem ölçüleri
+karaktere göre yeniden girilir.
 
 ## 9. Blender MCP Kurulumu
 
@@ -407,3 +491,7 @@ Content/Deadline/Characters/
    ```
 
 5. Oturumu yeniden başlat; bana "Blender bağlı mı?" diye sor, sahneyi okuyarak kontrol ederim.
+
+> **Not:** MCP bağlantısı, açık Blender'daki sahneyi canlı görmek ve düzenlemek için gerekir.
+> Rig ve export gibi tekrarlanabilir işler, MCP bağlı olmasa da arka planda çalışan Blender
+> script'leriyle yapılabilir (bölüm 5). Proje kökündeki `.mcp.json` sunucuyu tanımlar.
