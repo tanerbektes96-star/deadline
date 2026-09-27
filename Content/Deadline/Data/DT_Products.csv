@@ -1,0 +1,64 @@
+﻿ID,NameTR,NameEN,Brand,BrandTier,Category,RiskBand,BasePrice,ContainerType,VolumeBU,UnitsPerContainer,WeightKg,ShelfLifeDays,RequiresCold,ObsolescencePerDay,RequiresSecure,Fragile,LicenseRequired,LicenseType,BaseDemand,Elasticity,EventTags,SubstituteGroup,LaunchPhase
+S01,ClearSpring Su Kasası,ClearSpring Water Case,ClearSpring,Standard,Staples,Stable,18,BoxL,2.0,12,18.0,0,No,0.00,No,No,None,,320,0.35,Heatwave|PanicBuy|Everyday,Water,EA
+S02,Golden Grain Pirinç Çuvalı,Golden Grain Rice Sack,Golden Grain,Standard,Staples,Stable,26,BoxL,2.0,1,20.0,540,No,0.00,No,No,None,,210,0.40,PanicBuy|PortDelay|Everyday,Grain,EA
+S03,Golden Grain Un Çuvalı,Golden Grain Flour Sack,Golden Grain,Standard,Staples,Reactive,31,BoxM,1.0,1,20.0,180,No,0.00,No,No,None,,180,0.55,BakeryDemand|PortDelay,Grain,EA
+S04,Harvest Row Kiler Paketi,Harvest Row Pantry Pack,Harvest Row,Standard,Staples,Stable,22,BoxM,1.0,18,9.0,365,No,0.00,No,No,None,,150,0.30,Everyday,Pantry,U1
+S05,Sunfield Yağ Kasası,Sunfield Oil Case,Sunfield,Standard,Staples,Reactive,42,BoxM,1.0,12,12.5,270,No,0.00,No,Yes,None,,140,0.60,CookingDemand|PortDelay,Oil,EA
+S06,Harvest Row Konserve Paketi,Harvest Row Canned Meal Pack,Harvest Row,Standard,Staples,Reactive,38,BoxM,1.0,24,11.0,730,No,0.00,No,No,None,,160,0.45,Emergency|PanicBuy,Pantry,EA
+S07,Northvale Uzun Ömürlü Süt,Northvale Long-Life Milk,Northvale,Standard,Food,Reactive,29,BoxM,1.0,12,12.0,90,No,0.00,No,No,None,,190,0.50,Household,Dairy,EA
+S08,Frostline Donuk Gıda Kutusu,Frostline Frozen Meal Box,Frostline,Standard,Food,Volatile,46,ColdTote,1.0,12,12.0,30,Yes,0.00,No,No,None,,120,0.70,ColdChain|Outage,Frozen,EA
+S09,Frostline Taze Ürün Kasası,Frostline Fresh Produce Crate,Frostline,Standard,Food,Volatile,34,ColdTote,1.0,1,18.0,6,Yes,0.00,No,Yes,None,,170,0.75,FreshDemand|Weather,Fresh,EA
+S10,Meridian Roast Kahve Çuvalı,Meridian Roast Coffee Sack,Meridian Roast,Standard,Food,Volatile,58,BoxM,1.0,1,10.0,240,No,0.00,No,No,None,,110,0.65,HarvestCrisis|CafeDemand,Coffee,EA
+S11,Cacaoline Kakao Seti,Cacaoline Cocoa Set,Cacaoline,Standard,Food,Volatile,61,BoxM,1.0,8,8.0,300,No,0.00,No,No,None,,90,0.70,HarvestCrisis|EventDemand,Confection,U1
+S12,Frostline Donuk Protein,Frostline Frozen Protein Pack,Frostline,Standard,Food,Volatile,72,ColdTote,1.0,10,14.0,45,Yes,0.00,No,No,None,,95,0.80,ColdChain|Restaurant,Frozen,U1
+S13,Citrix Fizz Gazoz Kasası,Citrix Fizz Soda Crate,Citrix Fizz,Standard,Beverage,Reactive,33,BoxL,2.0,24,10.5,365,No,0.00,No,No,None,,240,0.85,Heatwave|Festival|Impulse,Beverage,EA
+S14,VOLTKICK Enerji İçeceği,VOLTKICK Energy Drink Case,VOLTKICK,Standard,Beverage,Volatile,44,BoxM,1.0,24,8.5,365,No,0.00,No,No,None,,150,1.10,NightEvent|Festival,Beverage,EA
+H01,Purelane Sabun Kartonu,Purelane Soap Carton,Purelane,Standard,Household,Stable,24,BoxM,1.0,24,7.0,0,No,0.00,No,No,None,,180,0.35,Everyday|Cleanup,Cleaning,EA
+H02,Purelane Deterjan Kutusu,Purelane Laundry Powder Box,Purelane,Standard,Household,Reactive,36,BoxM,1.0,12,10.0,0,No,0.00,No,No,None,,140,0.45,Household|Cleanup,Cleaning,EA
+H03,Softply Kâğıt Ürünleri,Softply Paper Goods Pack,Softply,Value,Household,Reactive,27,BoxL,2.0,24,5.0,0,No,0.00,No,No,None,,200,0.40,Cleanup|PanicBuy,Paper,EA
+H04,Bureau Nine Fotokopi Kâğıdı,Bureau Nine Printer Paper,Bureau Nine,Standard,Office,Stable,32,BoxM,1.0,5,12.5,0,No,0.00,No,No,None,,130,0.35,SchoolTerm|OfficeDemand,Paper,U1
+H05,Bureau Nine Kartuş Paketi,Bureau Nine Ink Cartridge Pack,Bureau Nine,Standard,Office,Volatile,52,BoxS,0.5,6,1.2,0,No,0.05,No,Yes,None,,80,0.75,OfficeDemand,Office,U1
+H06,Purelane Temizlik Kimyasalı,Purelane Cleaning Chemical Case,Purelane,Standard,Household,Reactive,39,BoxM,1.0,12,13.0,0,No,0.00,No,No,None,,110,0.50,Cleanup|Inspection,Cleaning,U1
+W01,Ironcrest LED Çalışma Lambası,Ironcrest LED Work Lamp,Ironcrest,Standard,Hardware,Reactive,39,BoxM,1.0,6,6.0,0,No,0.03,No,No,None,,100,0.60,Outage|Construction,Lighting,EA
+W02,Ironcrest Uzatma Kablo Makarası,Ironcrest Extension Cable Reel,Ironcrest,Standard,Hardware,Volatile,58,BoxM,1.0,1,9.0,0,No,0.00,No,No,None,,90,0.65,CopperPrice|Construction,Electrical,EA
+W03,Ironcrest Portatif Vantilatör,Ironcrest Portable Fan,Ironcrest,Standard,Hardware,Volatile,72,BoxL,2.0,1,4.5,0,No,0.05,No,Yes,None,,85,0.90,Heatwave,Climate,EA
+W04,Ironcrest Portatif Isıtıcı,Ironcrest Portable Heater,Ironcrest,Standard,Hardware,Volatile,84,BoxL,2.0,1,6.0,0,No,0.05,No,Yes,None,,85,0.90,ColdSnap,Climate,EA
+W05,Ironcrest Alet Çantası,Ironcrest Tool Kit,Ironcrest,Standard,Hardware,Reactive,95,BoxM,1.0,1,11.0,0,No,0.02,No,No,None,,70,0.55,Repair|Storm|Construction,Tools,U1
+W06,Guardline Şantiye Güvenlik Paketi,Guardline Site Safety Pack,Guardline,Standard,Safety,Reactive,46,BoxM,1.0,12,7.5,0,No,0.00,No,No,None,,95,0.50,Construction|Inspection,Safety,EA
+D01,Medrix İlk Yardım Kiti,Medrix First Aid Kit,Medrix,Standard,Medical,Volatile,48,BoxM,1.0,6,5.0,720,No,0.00,No,No,Standard,,105,0.55,Emergency|Storm,Medical,EA
+D02,Medrix Muayene Eldiveni,Medrix Medical Gloves Case,Medrix,Standard,Medical,Reactive,34,BoxM,1.0,100,4.0,540,No,0.00,No,No,Standard,,130,0.45,ClinicDemand|Outbreak,Medical,U1
+D03,Medrix Solunum Maskesi Kutusu,Medrix Respirator Mask Box,Medrix,Standard,Medical,Crisis,28,BoxM,1.0,50,3.0,900,No,0.00,No,No,Standard,,140,0.40,Outbreak|Smoke|PanicBuy,Medical,EA
+D04,Vitalis Care Soğuk Zincir Tıbbi Kap,Vitalis Care Cold-Chain Medical Carrier,Vitalis Care,Premium,Medical,Crisis,340,ColdTote,1.0,20,6.0,14,Yes,0.00,Yes,Yes,Restricted,Pharma,45,0.30,Outbreak|Emergency|ColdChain,Pharma,U2
+E01,Kaido Micro Alkalin Pil Paketi,Kaido Micro Alkaline Battery Pack,Kaido Micro,Value,Electronics,Volatile,63,BoxM,1.0,12,8.0,1095,No,0.02,No,No,None,,120,0.70,Outage|PanicBuy,Battery,EA
+E02,Norvex Lityum Hücre Tepsisi,Norvex Lithium Cell Tray,Norvex,Standard,Components,Volatile,148,BoxS,0.5,48,3.5,0,No,0.20,No,Yes,Standard,,70,0.75,Outage|EVBoom|FireRisk,Battery,U1
+E03,Kaido Micro Kablo ve Aksesuar,Kaido Micro Cable and Accessory Bundle,Kaido Micro,Value,Electronics,Reactive,26,BoxM,1.0,20,2.5,0,No,0.10,No,No,None,,110,0.60,AccessoryDemand,Accessory,U1
+E04,Cellwright Kompakt Radyo,Cellwright Compact Radio,Cellwright,Standard,Electronics,Reactive,86,BoxM,1.0,6,4.0,0,No,0.08,No,Yes,None,,75,0.65,Emergency|Outage,Comms,EA
+E05,Cellwright Telefon Tepsisi,Cellwright Smartphone Tray,Cellwright,Standard,Components,Volatile,480,BoxS,0.5,10,2.0,0,No,0.60,Yes,Yes,Standard,,55,0.95,LaunchRumor|Theft,Consumer,U1
+E06,Cellwright Ağ Yönlendirici,Cellwright Network Router Box,Cellwright,Standard,Electronics,Volatile,145,BoxM,1.0,6,3.5,0,No,0.20,No,Yes,None,,65,0.70,InternetOutage|Connectivity,Comms,EA
+E07,Norvex Bellek Modülü Tepsisi,Norvex Memory Module Tray,Norvex,Standard,Components,Crisis,620,BoxS,0.5,32,1.8,0,No,0.40,Yes,Yes,Standard,,50,0.85,ChipCrisis|AIBoom|PortDelay,Component,EA
+E08,Helion Systems Grafik Modülü,Helion Systems Graphics Module,Helion Systems,Premium,Components,Crisis,1850,SecureCase,0.5,4,3.0,0,No,0.50,Yes,Yes,Standard,,32,1.05,AIBoom|ChipCrisis|Tariff|Theft,Component,EA
+E09,Norvex Depolama Sürücüsü Paketi,Norvex Storage Drive Pack,Norvex,Standard,Components,Volatile,540,BoxS,0.5,20,2.2,0,No,0.35,Yes,Yes,Standard,,45,0.80,DatacenterDemand|ChipCrisis,Component,U1
+E10,Norvex Denetleyici Çip Tepsisi,Norvex Controller Chip Tray,Norvex,Standard,Components,Crisis,980,SecureCase,0.5,200,1.0,0,No,0.30,Yes,Yes,Standard,,38,0.90,ChipCrisis|FabOutage|ExportControl,Component,EA
+G01,Emberco Yakıt Bidonu Seti,Emberco Fuel Canister Set,Emberco,Standard,Energy,Crisis,72,Crate,4.0,4,22.0,0,No,0.00,No,No,Restricted,Hazmat,100,0.55,Outage|FuelSpike,Fuel,EA
+G02,Emberco Jeneratör Yakıt Varili,Emberco Generator Fuel Drum,Emberco,Standard,Energy,Crisis,118,Crate,4.0,1,180.0,0,No,0.00,No,No,Restricted,Hazmat,80,0.50,Outage|FuelSpike,Fuel,U1
+G03,Torqline Kompakt Jeneratör,Torqline Compact Generator,Torqline,Standard,Energy,Crisis,640,Crate,4.0,1,68.0,0,No,0.05,No,No,Standard,,40,0.70,Outage|Storm,Power,EA
+G04,Torqline Endüstriyel Su Pompası,Torqline Industrial Water Pump,Torqline,Standard,Industrial,Volatile,520,Crate,4.0,1,55.0,0,No,0.04,No,No,Standard,,35,0.65,Flood|Storm,Pump,U1
+G05,Torqline Nem Alıcı,Torqline Dehumidifier,Torqline,Standard,Industrial,Volatile,330,Crate,4.0,1,32.0,0,No,0.05,No,No,Standard,,38,0.70,Flood|Smoke|Climate,Climate,U1
+G06,Helion Systems Sunucu Güç Ünitesi,Helion Systems Server Power Unit,Helion Systems,Premium,Industrial,Volatile,410,BoxM,1.0,2,14.0,0,No,0.20,No,Yes,Standard,,42,0.75,DatacenterDemand|AIBoom,Power,U2
+X01,Stagecraft Etkinlik Bariyeri,Stagecraft Event Barrier Pack,Stagecraft,Standard,Event,Volatile,145,Pallet,16.0,10,140.0,0,No,0.00,No,No,None,,60,0.55,Festival|PublicGathering,Event,EA
+X02,Stagecraft Portatif Işık Rigi,Stagecraft Portable Lighting Rig,Stagecraft,Standard,Event,Crisis,980,Crate,4.0,1,48.0,0,No,0.08,No,Yes,Standard,,28,0.80,NightEvent|Concert,Event,U1
+X03,Stagecraft Portatif Soğutma Ünitesi,Stagecraft Portable Cooling Unit,Stagecraft,Standard,Event,Volatile,260,Crate,4.0,1,38.0,0,No,0.05,No,No,Standard,,42,0.70,Heatwave|Festival,Climate,U2
+X04,Manifestosuz Kargo Lotu,Unmanifested Cargo Lot,,Unbranded,Grey,Crisis,1200,Pallet,16.0,1,320.0,0,No,0.00,Yes,No,Prohibited,,12,0.50,Auction|Seizure|Unknown,Grey,EA
+M01,Külçe Gümüş Kasası,Silver Bullion Case,,Unbranded,Precious,Volatile,2400,SecureCase,0.5,20,20.0,0,No,0.00,Yes,No,Restricted,Precious,22,0.25,MarketCrash|CurrencySwing|Theft,Precious,EA
+M02,Külçe Altın Kutusu,Gold Bullion Box,,Unbranded,Precious,Volatile,9600,SecureCase,0.5,10,10.0,0,No,0.00,Yes,No,Restricted,Precious,14,0.20,MarketCrash|CurrencySwing|Theft,Precious,U2
+K01,Emberco Endüstriyel Solvent,Emberco Industrial Solvent Drum,Emberco,Standard,Chemicals,Volatile,190,Crate,4.0,1,160.0,0,No,0.00,No,No,Restricted,Hazmat,45,0.60,Construction|Inspection,Chemical,EA
+K02,Emberco Soğutucu Gaz Tüpü,Emberco Refrigerant Gas Cylinder,Emberco,Standard,Chemicals,Crisis,420,Crate,4.0,1,72.0,0,No,0.00,No,Yes,Restricted,Hazmat,30,0.55,Heatwave|ColdChain|Smuggling,Chemical,U2
+K03,Sunfield Tarım Gübresi,Sunfield Agricultural Fertilizer,Sunfield,Standard,Chemicals,Volatile,88,BoxL,2.0,1,25.0,540,No,0.00,No,No,Restricted,Precursor,55,0.50,HarvestCrisis|Inspection,Chemical,U2
+F01,Vitalis Care Reçeteli İlaç Kasası,Vitalis Care Prescription Pharma Case,Vitalis Care,Premium,Medical,Crisis,760,SecureCase,0.5,50,4.0,365,No,0.05,Yes,Yes,Restricted,Pharma,35,0.35,Outbreak|Emergency|Smuggling,Pharma,EA
+T01,Guardline İş Kıyafeti Balyası,Guardline Workwear Bale,Guardline,Standard,Textile,Stable,130,BoxL,2.0,30,22.0,0,No,0.02,No,No,None,,60,0.45,Construction|Everyday,Textile,U2
+T02,Sezonluk Giyim Balyası,Seasonal Apparel Bale,,Unbranded,Textile,Volatile,210,BoxL,2.0,25,18.0,0,No,0.35,No,No,None,,50,1.20,SeasonWindow|DeadStock,Textile,U2
+Y01,Ironcrest Yedek Parça Kiti,Ironcrest Spare Parts Kit,Ironcrest,Standard,Auto,Reactive,240,BoxM,1.0,1,16.0,0,No,0.03,No,No,Standard,,48,0.55,FleetRepair|FuelSpike,Auto,U1
+I01,Çimento Paleti,Cement Pallet,,Unbranded,Construction,Reactive,340,Pallet,16.0,40,1200.0,180,No,0.00,No,No,None,,55,0.40,Construction|Infrastructure,Construction,U2
+I02,İnşaat Demiri Demeti,Rebar Bundle,,Unbranded,Construction,Volatile,520,Pallet,16.0,1,900.0,0,No,0.00,No,No,None,,45,0.50,Construction|SteelPrice,Construction,U2
+L01,Lüks Saat Kasası,Luxury Watch Case,,Unbranded,Luxury,Volatile,3200,SecureCase,0.5,12,2.5,0,No,0.10,Yes,Yes,Restricted,Precious,16,1.15,Counterfeit|Theft|Festival,Luxury,U2
+X05,Vergi Pullu İçki Kasası,Excise-Stamped Spirits Case,,Unbranded,Excise,Volatile,310,BoxM,1.0,12,15.0,0,No,0.00,Yes,Yes,Restricted,Excise,52,0.85,Festival|NightEvent|Smuggling,Excise,U2

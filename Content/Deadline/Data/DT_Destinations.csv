@@ -1,0 +1,8 @@
+﻿ID,NameTR,NameEN,Category,MapX,MapY,IsHome
+D01,Depo,Home Depot,Home,0.231,0.694,True
+D02,Sanayi Tedarik,Industrial Supply,Supplier,0.251,0.305,False
+D03,Kuzey Toptancı,North Wholesaler,Supplier,0.483,0.137,False
+D04,Merkez Alıcı,Central Buyer,Buyer,0.593,0.281,False
+D05,Doğu Perakende,East Retail,Buyer,0.781,0.233,False
+D06,Liman Terminali,Port Terminal,Port,0.769,0.477,False
+D07,Güney Rampa,South Ramp,Grey,0.599,0.683,False
