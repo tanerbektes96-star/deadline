@@ -244,10 +244,10 @@ Bu ay ikiye bölünür: ilk iki hafta **vitrin**, son iki hafta **oynanış**.
 
 **Hafta 3–4 — Tahmin sistemi**
 
-- [ ] `UEventSubsystem` — 12 olay, tohumlu takvim
-- [ ] Haber/radyo katmanı (aynı olay verisinden beslenir)
-- [ ] Tahmin panosu: sinyaller, güven yüzdesi, maruziyet
-- [ ] Taahhüt akışı: miktar + bütçe kilidi + süre
+- [x] `UEventSubsystem` — 12 olay, tohumlu takvim
+- [x] Haber/radyo katmanı (aynı olay verisinden beslenir)
+- [x] Tahmin panosu: sinyaller, güven yüzdesi, maruziyet
+- [x] Taahhüt akışı: miktar + bütçe kilidi + süre
 - [ ] Sonuç ekranı: doğru/yanlış + **"neden yanıldım" kartı**
 - [ ] Not defteri (geçmiş tahminler)
 - [ ] **Gün sonu özeti ekranı**

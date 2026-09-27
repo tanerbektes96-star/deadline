@@ -8,6 +8,7 @@
 #include "Economy/EconomySubsystem.h"
 #include "Economy/MarketSubsystem.h"
 #include "Events/EventSubsystem.h"
+#include "Forecast/ForecastSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -27,6 +28,7 @@ void USaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Collection.InitializeDependency(UFleetSubsystem::StaticClass());
 	Collection.InitializeDependency(UTravelSubsystem::StaticClass());
 	Collection.InitializeDependency(UEventSubsystem::StaticClass());
+	Collection.InitializeDependency(UForecastSubsystem::StaticClass());
 	Super::Initialize(Collection);
 
 	if (GameSeed == 0)
@@ -63,6 +65,10 @@ bool USaveSubsystem::SaveGame(const FString& SlotName)
 		Save->Cash = Economy->GetCash();
 		Save->Bank = Economy->GetBank();
 		Save->Transactions = Economy->GetTransactions();
+	}
+	if (const UForecastSubsystem* Forecast = GI->GetSubsystem<UForecastSubsystem>())
+	{
+		Save->Commitments = Forecast->GetCommitments();
 	}
 
 	if (const UInventorySubsystem* Inventory = GI->GetSubsystem<UInventorySubsystem>())
@@ -241,6 +247,12 @@ bool USaveSubsystem::LoadGame(const FString& SlotName)
 		}
 	}
 
+	// After the funds: the open budgets are locked against them.
+	if (UForecastSubsystem* Forecast = GI->GetSubsystem<UForecastSubsystem>())
+	{
+		Forecast->RestoreCommitments(Save->Commitments);
+	}
+
 	if (const UWorld* World = GI->GetWorld())
 	{
 		if (APlayerController* PC = World->GetFirstPlayerController())
@@ -301,6 +313,10 @@ void USaveSubsystem::StartNewGame(int32 InSeed)
 	if (UEventSubsystem* Events = GI->GetSubsystem<UEventSubsystem>())
 	{
 		Events->ResetAll();
+	}
+	if (UForecastSubsystem* Forecast = GI->GetSubsystem<UForecastSubsystem>())
+	{
+		Forecast->ResetAll();
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[Deadline] New game, seed %d."), GameSeed);
@@ -375,6 +391,13 @@ bool USaveSubsystem::Migrate(UDeadlineSaveGame& Save) const
 		// warehouse may hold loose boxes it could then never rebuild.
 		Save.EmptyPallets = FMath::Max(0, UDeadlineSettings::Get().StartingEmptyPallets);
 		Save.SaveVersion = 6;
+	}
+
+	if (Save.SaveVersion == 6)
+	{
+		// v6 had no commitments: none is the truthful answer.
+		Save.Commitments.Reset();
+		Save.SaveVersion = 7;
 	}
 
 	Save.SaveVersion = UDeadlineSaveGame::LatestVersion;

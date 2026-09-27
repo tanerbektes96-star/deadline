@@ -68,6 +68,14 @@ UWidget* UDeadlineWidgetTools::AddWidget(UWidgetBlueprint* Blueprint,
 	}
 	NewWidget->SetDisplayLabel(WidgetName.ToString());
 
+	// The Designer registers every widget it creates here; the compiler
+	// ensures on any that is missing. A rebuild keeps the name's existing
+	// GUID, so references by GUID survive it.
+	if (!Blueprint->WidgetVariableNameToGuidMap.Contains(WidgetName))
+	{
+		Blueprint->OnVariableAdded(WidgetName);
+	}
+
 	if (Parent)
 	{
 		Parent->AddChild(NewWidget);

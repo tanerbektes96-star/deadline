@@ -8,6 +8,7 @@
 
 #include "CoreMinimal.h"
 #include "Economy/EconomySubsystem.h"
+#include "Forecast/ForecastSubsystem.h"
 #include "Inventory/InventorySubsystem.h"
 #include "GameFramework/SaveGame.h"
 #include "DeadlineSaveGame.generated.h"
@@ -70,8 +71,9 @@ public:
 	    v4 — which destination the player is standing at.
 	    v5 — how old the goods are, so shelf life and obsolescence survive a
 	         reload (GDD 5.1).
-	    v6 — spare wooden pallets (GDD 5.6). */
-	static constexpr int32 LatestVersion = 6;
+	    v6 — spare wooden pallets (GDD 5.6).
+	    v7 — forecast commitments and their budget locks (GDD 4 step 2). */
+	static constexpr int32 LatestVersion = 7;
 
 	UPROPERTY()
 	int32 SaveVersion = LatestVersion;
@@ -109,6 +111,10 @@ public:
 
 	UPROPERTY()
 	TArray<FTransactionRecord> Transactions;
+
+	/** v7: every commitment this run, open budgets included. */
+	UPROPERTY()
+	TArray<FForecastCommitment> Commitments;
 
 	/** v3: what every truck is carrying. */
 	UPROPERTY()

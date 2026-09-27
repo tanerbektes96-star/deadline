@@ -2,6 +2,7 @@
 
 #include "Data/ProductCatalogSubsystem.h"
 
+#include "Core/DeadlineLocale.h"
 #include "Core/DeadlineSettings.h"
 #include "Engine/DataTable.h"
 #include "Internationalization/Culture.h"
@@ -128,12 +129,7 @@ FString UProductCatalogSubsystem::GetDisplayName(FName ProductID) const
 		return FString();
 	}
 
-	const FString Language = FInternationalization::Get().GetCurrentLanguage()->GetTwoLetterISOLanguageName();
-	if (Language == TEXT("tr") && !Row->NameTR.IsEmpty())
-	{
-		return Row->NameTR;
-	}
-	return Row->NameEN;
+	return DeadlineLocale::Pick(Row->NameTR, Row->NameEN);
 }
 
 float UProductCatalogSubsystem::GetVolumeBU(FName ProductID) const

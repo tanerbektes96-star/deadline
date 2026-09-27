@@ -186,6 +186,15 @@ public:
 	UFUNCTION(exec)
 	void Dl_OpenForecast();
 
+	/** Commit on today's signal: Dl_Commit E19 F03 4 2. No event picks the
+	    first price signal on the board, no product its first product. */
+	UFUNCTION(exec)
+	void Dl_Commit(FName EventID = NAME_None, FName ProductID = NAME_None, int32 Containers = 1, int32 HoldDays = 2);
+
+	/** Every commitment this run and the funds locked for them. */
+	UFUNCTION(exec)
+	void Dl_Commitments();
+
 	// --- Balance data ------------------------------------------------------
 
 	/** Re-read Content/Deadline/Data/DT_Products.csv into the running game.

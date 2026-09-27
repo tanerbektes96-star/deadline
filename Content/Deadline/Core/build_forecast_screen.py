@@ -227,6 +227,104 @@ def build_card():
     return bp
 
 
+# --- commitment panel (inside the detail column) -----------------------------
+
+def small_button(bp, name, label, parent, width=30.0):
+    """A square +/-/</> button in a SizeBox, returns the SizeBox."""
+    size = add(bp, unreal.SizeBox, name + "Box", parent)
+    size.set_width_override(width)
+    size.set_height_override(28.0)
+    button = add(bp, unreal.Button, name, size)
+    button_style(button, PANEL, LINE, rgb("444D51"))
+    align_slot(button)
+    caption = add(bp, unreal.TextBlock, name + "Label", button)
+    caption.set_text(label)
+    text(caption, 15, BODY, NUMBER, unreal.TextJustify.CENTER)
+    align_slot(caption, h=H_CENTER, v=V_CENTER)
+    return size
+
+
+def build_commit_panel(bp, detail):
+    frame = add(bp, unreal.Border, "CommitFrame", detail)
+    frame.set_editor_property("background", brush(RAISED, ACCENT))
+    frame.set_editor_property("padding", margin(14.0, 10.0, 14.0, 12.0))
+    box_slot(frame, size=AUTO, padding=margin(0.0, 14.0, 0.0, 0.0))
+
+    column = add(bp, unreal.VerticalBox, "CommitColumn", frame)
+    align_slot(column)
+
+    head = add(bp, unreal.HorizontalBox, "CommitHeadRow", column)
+    box_slot(head, size=AUTO, padding=margin(0.0, 0.0, 0.0, 6.0))
+    label = add(bp, unreal.TextBlock, "CommitLabel", head)
+    label.set_text("TAAHHÜT")
+    text(label, 15, ACCENT, HEADING)
+    box_slot(label, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 14.0, 0.0))
+    status = add(bp, unreal.TextBlock, "CommitStatusText", head)
+    text(status, 13, MUTED, LABEL, wrap=True)
+    box_slot(status, size=FILL, v=V_CENTER)
+
+    controls = add(bp, unreal.VerticalBox, "CommitControls", column)
+    box_slot(controls, size=AUTO)
+
+    product_row = add(bp, unreal.HorizontalBox, "CommitProductRow", controls)
+    box_slot(product_row, size=AUTO, padding=margin(0.0, 0.0, 0.0, 6.0))
+    box_slot(small_button(bp, "ProductPrevButton", "<", product_row), size=AUTO, v=V_CENTER)
+    product = add(bp, unreal.TextBlock, "CommitProductText", product_row)
+    text(product, 14, BODY, LABEL)
+    box_slot(product, size=FILL, v=V_CENTER, padding=margin(10.0, 0.0, 10.0, 0.0))
+    box_slot(small_button(bp, "ProductNextButton", ">", product_row), size=AUTO, v=V_CENTER)
+
+    amount_row = add(bp, unreal.HorizontalBox, "CommitAmountRow", controls)
+    box_slot(amount_row, size=AUTO, padding=margin(0.0, 0.0, 0.0, 8.0))
+
+    qty_label = add(bp, unreal.TextBlock, "CommitQtyLabel", amount_row)
+    qty_label.set_text("Miktar")
+    text(qty_label, 13, MUTED, LABEL)
+    box_slot(qty_label, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 10.0, 0.0))
+    box_slot(small_button(bp, "QtyMinusButton", "-", amount_row), size=AUTO, v=V_CENTER)
+    qty_box = add(bp, unreal.SizeBox, "CommitQtyBox", amount_row)
+    qty_box.set_width_override(52.0)
+    box_slot(qty_box, size=AUTO, v=V_CENTER)
+    qty = add(bp, unreal.TextBlock, "CommitQtyText", qty_box)
+    text(qty, 16, BODY, NUMBER, unreal.TextJustify.CENTER)
+    align_slot(qty, h=H_CENTER, v=V_CENTER)
+    box_slot(small_button(bp, "QtyPlusButton", "+", amount_row), size=AUTO, v=V_CENTER)
+
+    gap = add(bp, unreal.Spacer, "CommitAmountGap", amount_row)
+    box_slot(gap, size=FILL)
+
+    hold_label = add(bp, unreal.TextBlock, "CommitHoldLabel", amount_row)
+    hold_label.set_text("Günden sonra bekle")
+    text(hold_label, 13, MUTED, LABEL)
+    box_slot(hold_label, size=AUTO, v=V_CENTER, padding=margin(0.0, 0.0, 10.0, 0.0))
+    box_slot(small_button(bp, "HoldMinusButton", "-", amount_row), size=AUTO, v=V_CENTER)
+    hold_box = add(bp, unreal.SizeBox, "CommitHoldBox", amount_row)
+    hold_box.set_width_override(64.0)
+    box_slot(hold_box, size=AUTO, v=V_CENTER)
+    hold = add(bp, unreal.TextBlock, "CommitHoldText", hold_box)
+    text(hold, 16, BODY, NUMBER, unreal.TextJustify.CENTER)
+    align_slot(hold, h=H_CENTER, v=V_CENTER)
+    box_slot(small_button(bp, "HoldPlusButton", "+", amount_row), size=AUTO, v=V_CENTER)
+
+    bottom = add(bp, unreal.HorizontalBox, "CommitBottomRow", column)
+    box_slot(bottom, size=AUTO)
+    budget = add(bp, unreal.TextBlock, "CommitBudgetText", bottom)
+    text(budget, 13, BODY, LABEL, wrap=True)
+    box_slot(budget, size=FILL, v=V_CENTER, padding=margin(0.0, 0.0, 14.0, 0.0))
+
+    commit_box = add(bp, unreal.SizeBox, "CommitButtonBox", bottom)
+    commit_box.set_min_desired_width(150.0)
+    commit_box.set_height_override(36.0)
+    box_slot(commit_box, size=AUTO, v=V_CENTER)
+    commit = add(bp, unreal.Button, "CommitButton", commit_box)
+    button_style(commit, ACCENT, rgb("6E9DB8"), rgb("4A7690"))
+    align_slot(commit)
+    commit_label = add(bp, unreal.TextBlock, "CommitButtonText", commit)
+    commit_label.set_text("TAAHHÜT ET")
+    text(commit_label, 16, WHITE, HEADING, unreal.TextJustify.CENTER)
+    align_slot(commit_label, h=H_CENTER, v=V_CENTER)
+
+
 # --- WBP_ForecastScreen ------------------------------------------------------
 
 def build_screen(card_bp):
@@ -328,6 +426,8 @@ def build_screen(card_bp):
 
     spacer = add(bp, unreal.Spacer, "DetailSpacer", detail)
     box_slot(spacer, size=FILL)
+
+    build_commit_panel(bp, detail)
 
     hint_frame = add(bp, unreal.Border, "DetailHintFrame", detail)
     hint_frame.set_editor_property("background", brush(RAISED))

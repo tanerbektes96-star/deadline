@@ -152,6 +152,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Deadline|Economy")
 	bool Deposit(float Amount);
 
+	// --- Budget locks (forecast commitments, roadmap Month 4) ---------------
+	//
+	// A lock is money set aside for buying one product. It stays in your
+	// accounts -- nothing moves -- but TryBuy will not spend it on anything
+	// else, and buying that product draws on it first. Only trading honours
+	// locks: fuel and other running costs must never strand you because of a
+	// forecast.
+
+	/** Set aside Amount for ProductID. False if the unlocked funds are short. */
+	bool LockFunds(FName ProductID, float Amount);
+
+	/** Drop ProductID's lock. Returns what was still locked. */
+	float ReleaseLock(FName ProductID);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
+	float GetLockedFunds() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
+	float GetLockedFundsFor(FName ProductID) const;
+
+	/** Cash + bank minus every lock: what you can spend freely. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
+	float GetAvailableFunds() const { return Cash + Bank - GetLockedFunds(); }
+
 	// --- Prices ------------------------------------------------------------
 
 	/** Today's quoted market price for one container (UMarketSubsystem). */
@@ -299,4 +323,8 @@ private:
 
 	UPROPERTY()
 	TArray<FTransactionRecord> Transactions;
+
+	/** Not saved here: the forecast commitments own them and put them back on
+	    load (UForecastSubsystem::RestoreCommitments). */
+	TMap<FName, float> Locks;
 };

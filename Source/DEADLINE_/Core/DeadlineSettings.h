@@ -47,6 +47,14 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Data")
 	TSoftClassPtr<UUserWidget> ForecastScreenWidget;
 
+	// --- Language ---------------------------------------------------------
+
+	/** The game's language: "tr" or "en". Turkish by default. Separate from
+	    the engine culture so PIE plays in Turkish whatever language the editor
+	    runs in. Overridden per run with -DeadlineLang=en. */
+	UPROPERTY(Config, EditAnywhere, Category = "Language")
+	FString GameLanguage = TEXT("tr");
+
 	// --- Starting funds (GDD 8.3) -----------------------------------------
 
 	UPROPERTY(Config, EditAnywhere, Category = "Economy")
@@ -191,6 +199,16 @@ public:
 	    The risk band ceiling still applies on top. */
 	UPROPERTY(Config, EditAnywhere, Category = "Events", meta = (ClampMin = "0.0"))
 	float MaxEventTarget = 3.f;
+
+	// --- Forecast commitments (GDD 4 step 2) --------------------------------
+
+	/** Longest hold after the expected day before a commitment is judged. */
+	UPROPERTY(Config, EditAnywhere, Category = "Forecast", meta = (ClampMin = "1"))
+	int32 CommitHoldDaysMax = 5;
+
+	/** What the board's duration control starts on. */
+	UPROPERTY(Config, EditAnywhere, Category = "Forecast", meta = (ClampMin = "1"))
+	int32 CommitHoldDaysDefault = 2;
 
 	// --- Player (GDD 3.2) ---------------------------------------------------
 

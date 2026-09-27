@@ -181,6 +181,13 @@ bool UEconomySubsystem::TryBuy(FName ProductID, int32 Containers, ETradeLedger L
 	{
 		return false;
 	}
+	// Money locked for other products stays untouched; this product's own lock
+	// is what the trade is for, so it pays first.
+	const float OwnLock = FMath::Min(GetLockedFundsFor(ProductID), Total);
+	if (Cash + Bank - Total < GetLockedFunds() - OwnLock - KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
 	const bool bRecorded = (Ledger == ETradeLedger::White);
 	if (bAffectInventory)
 	{
@@ -191,6 +198,15 @@ bool UEconomySubsystem::TryBuy(FName ProductID, int32 Containers, ETradeLedger L
 	}
 
 	(Payment == EPaymentMethod::Cash ? Cash : Bank) -= Total;
+	if (OwnLock > 0.f)
+	{
+		float& Lock = Locks.FindChecked(ProductID);
+		Lock -= OwnLock;
+		if (Lock <= KINDA_SMALL_NUMBER)
+		{
+			Locks.Remove(ProductID);
+		}
+	}
 
 	// Write the ledger BEFORE telling anyone the funds moved. Profit and loss
 	// is replayed from this log, so a listener woken by OnFundsChanged would
@@ -235,6 +251,46 @@ bool UEconomySubsystem::TrySell(FName ProductID, int32 Containers, ETradeLedger 
 	Record(ProductID, -Containers, Total, Ledger, Payment);
 	OnFundsChanged.Broadcast();
 	return true;
+}
+
+// --- Budget locks -------------------------------------------------------------
+
+bool UEconomySubsystem::LockFunds(FName ProductID, float Amount)
+{
+	if (ProductID.IsNone() || Amount <= 0.f || GetAvailableFunds() < Amount)
+	{
+		return false;
+	}
+	Locks.FindOrAdd(ProductID) += Amount;
+	OnFundsChanged.Broadcast();
+	return true;
+}
+
+float UEconomySubsystem::ReleaseLock(FName ProductID)
+{
+	float Released = 0.f;
+	if (!Locks.RemoveAndCopyValue(ProductID, Released))
+	{
+		return 0.f;
+	}
+	OnFundsChanged.Broadcast();
+	return Released;
+}
+
+float UEconomySubsystem::GetLockedFunds() const
+{
+	float Total = 0.f;
+	for (const TPair<FName, float>& Pair : Locks)
+	{
+		Total += Pair.Value;
+	}
+	return Total;
+}
+
+float UEconomySubsystem::GetLockedFundsFor(FName ProductID) const
+{
+	const float* Lock = Locks.Find(ProductID);
+	return Lock ? *Lock : 0.f;
 }
 
 void UEconomySubsystem::Record(FName ProductID, int32 Containers, float Amount,
@@ -527,6 +583,7 @@ void UEconomySubsystem::ResetAll()
 	Cash = Settings.StartingCash;
 	Bank = Settings.StartingBank;
 	Transactions.Empty();
+	Locks.Empty();
 	OnFundsChanged.Broadcast();
 }
 
@@ -534,5 +591,6 @@ void UEconomySubsystem::RestoreFunds(float InCash, float InBank)
 {
 	Cash = InCash;
 	Bank = InBank;
+	Locks.Empty();
 	OnFundsChanged.Broadcast();
 }

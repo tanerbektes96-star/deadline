@@ -47,6 +47,10 @@ void UForecastCardWidget::SetEntry(const FForecastEntry& Entry)
 				? NSLOCTEXT("Deadline", "ForecastLastDay", "SÜRÜYOR · bugün bitiyor")
 				: FText::Format(NSLOCTEXT("Deadline", "ForecastUntil", "SÜRÜYOR · gün {0}'e kadar"), FText::AsNumber(Entry.Day));
 		}
+		if (Entry.CommitmentID != INDEX_NONE)
+		{
+			When = FText::Format(NSLOCTEXT("Deadline", "ForecastCardCommitted", "{0} · TAAHHÜTLÜ"), When);
+		}
 		StatusText->SetText(When);
 		StatusText->SetColorAndOpacity(FSlateColor(bSignal ? DeadlineUI::Warn : DeadlineUI::Accent));
 	}

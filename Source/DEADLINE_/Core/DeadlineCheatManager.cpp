@@ -1003,6 +1003,55 @@ void UDeadlineCheatManager::Dl_OpenForecast()
 	}
 }
 
+void UDeadlineCheatManager::Dl_Commit(FName EventID, FName ProductID, int32 Containers, int32 HoldDays)
+{
+	UForecastSubsystem* Forecast = GetSub<UForecastSubsystem>(this);
+	if (!Forecast)
+	{
+		return;
+	}
+	for (const FForecastEntry& E : Forecast->GetBoard())
+	{
+		const bool bMatch = EventID.IsNone()
+			? E.Status == EForecastStatus::Signal && E.ImpactMax > 0.f
+			: E.EventID == EventID;
+		if (bMatch && E.Products.Num() > 0)
+		{
+			EventID = E.EventID;
+			if (ProductID.IsNone())
+			{
+				ProductID = E.Products[0].ProductID;
+			}
+			break;
+		}
+	}
+	const ECommitRefusal Refusal = Forecast->CanCommit(EventID, ProductID, Containers);
+	const int32 ID = Forecast->Commit(EventID, ProductID, Containers, HoldDays);
+	Report(ID != INDEX_NONE
+		? FString::Printf(TEXT("Commitment #%d: %s on %s, %d containers, hold %d days."), ID, *ProductID.ToString(), *EventID.ToString(), Containers, HoldDays)
+		: FString::Printf(TEXT("Commitment refused (%s)."), *UEnum::GetValueAsString(Refusal)));
+}
+
+void UDeadlineCheatManager::Dl_Commitments()
+{
+	const UForecastSubsystem* Forecast = GetSub<UForecastSubsystem>(this);
+	const UEconomySubsystem* Economy = GetSub<UEconomySubsystem>(this);
+	if (!Forecast || !Economy)
+	{
+		return;
+	}
+	Report(FString::Printf(TEXT("%d commitments, $%.0f locked, $%.0f free (details in the Output Log)"),
+		Forecast->GetCommitments().Num(), Economy->GetLockedFunds(), Economy->GetAvailableFunds()));
+	for (const FForecastCommitment& C : Forecast->GetCommitments())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]   #%d %s %s/%s %.0f%% day %d->%d  bought %d/%d spent $%.0f  sold %d $%.0f  lock $%.0f  %s result %+.0f"),
+			C.ID, *UEnum::GetValueAsString(C.State), *C.EventID.ToString(), *C.ProductID.ToString(), C.Confidence * 100.f,
+			C.ExpectedDay, C.GetResolveDay(), C.BoughtContainers, C.TargetContainers, C.Spent, C.SoldContainers, C.Proceeds,
+			C.LockRemaining, C.State == ECommitmentState::Resolved ? (C.bEventHappened ? TEXT("HAPPENED") : TEXT("DID-NOT")) : TEXT("-"),
+			C.Result);
+	}
+}
+
 void UDeadlineCheatManager::Dl_OpenMarket()
 {
 	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOuterAPlayerController()))

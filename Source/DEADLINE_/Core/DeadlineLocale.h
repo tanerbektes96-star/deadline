@@ -1,7 +1,8 @@
 // Copyright DEADLINE. All Rights Reserved.
 //
-// TR or EN, one rule for the whole game: Turkish when the game runs in
-// Turkish and the Turkish text exists, English otherwise. The data tables
+// TR or EN, one rule for the whole game: Turkish when the game language is
+// Turkish (the default, UDeadlineSettings::GameLanguage, or -DeadlineLang=)
+// and the Turkish text exists, English otherwise. The data tables
 // carry both columns (NameTR/NameEN and friends); this picks between them.
 //
 // In a header, not an anonymous namespace per .cpp, for the same reason as
@@ -11,14 +12,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Internationalization/Culture.h"
-#include "Internationalization/Internationalization.h"
+#include "Core/DeadlineSettings.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace DeadlineLocale
 {
 	inline bool IsTurkish()
 	{
-		return FInternationalization::Get().GetCurrentLanguage()->GetTwoLetterISOLanguageName() == TEXT("tr");
+		FString Language;
+		if (!FParse::Value(FCommandLine::Get(), TEXT("DeadlineLang="), Language))
+		{
+			Language = UDeadlineSettings::Get().GameLanguage;
+		}
+		return Language.StartsWith(TEXT("tr"), ESearchCase::IgnoreCase);
 	}
 
 	inline const FString& Pick(const FString& TR, const FString& EN)

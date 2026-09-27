@@ -11,6 +11,7 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Core/DeadlinePlayerController.h"
+#include "Core/DeadlineSettings.h"
 #include "Core/TimeSubsystem.h"
 #include "Economy/EconomySubsystem.h"
 #include "Engine/GameInstance.h"
@@ -26,6 +27,13 @@ void UForecastScreenWidget::NativeConstruct()
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleCloseClicked);
 	}
+	if (ProductPrevButton) { ProductPrevButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleProductPrev); }
+	if (ProductNextButton) { ProductNextButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleProductNext); }
+	if (QtyMinusButton) { QtyMinusButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleQtyMinus); }
+	if (QtyPlusButton) { QtyPlusButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleQtyPlus); }
+	if (HoldMinusButton) { HoldMinusButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleHoldMinus); }
+	if (HoldPlusButton) { HoldPlusButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleHoldPlus); }
+	if (CommitButton) { CommitButton->OnClicked.AddUniqueDynamic(this, &UForecastScreenWidget::HandleCommitClicked); }
 	if (UForecastSubsystem* Forecast = GetForecast())
 	{
 		Forecast->OnBoardChanged.AddUniqueDynamic(this, &UForecastScreenWidget::HandleBoardChanged);
@@ -74,9 +82,14 @@ void UForecastScreenWidget::Refresh()
 	{
 		const UGameInstance* GI = GetGameInstance();
 		const UEconomySubsystem* Economy = GI ? GI->GetSubsystem<UEconomySubsystem>() : nullptr;
-		SummaryText->SetText(FText::Format(NSLOCTEXT("Deadline", "ForecastSummary", "Toplam maruziyet {0}   ·   Kullanılabilir para {1}"),
-			ForecastFormat::Money(Forecast ? Forecast->GetTotalExposure() : 0.f),
-			ForecastFormat::Money(Economy ? Economy->GetTotalFunds() : 0.f)));
+		const float Locked = Economy ? Economy->GetLockedFunds() : 0.f;
+		const FText Exposure = ForecastFormat::Money(Forecast ? Forecast->GetTotalExposure() : 0.f);
+		const FText Available = ForecastFormat::Money(Economy ? Economy->GetAvailableFunds() : 0.f);
+		SummaryText->SetText(Locked > 0.5f
+			? FText::Format(NSLOCTEXT("Deadline", "ForecastSummaryLocked", "Toplam maruziyet {0}   ·   Serbest para {1}   ·   Kilitli {2}"),
+				Exposure, Available, ForecastFormat::Money(Locked))
+			: FText::Format(NSLOCTEXT("Deadline", "ForecastSummary", "Toplam maruziyet {0}   ·   Kullanılabilir para {1}"),
+				Exposure, Available));
 	}
 
 	if (CardList)
@@ -168,6 +181,7 @@ void UForecastScreenWidget::ShowDetail(const FForecastEntry* Entry)
 		if (DetailBodyText) { DetailBodyText->SetText(Nothing); }
 		if (DetailStakeText) { DetailStakeText->SetText(FText::GetEmpty()); }
 		if (DetailHintText) { DetailHintText->SetText(FText::GetEmpty()); }
+		ShowCommitPanel(nullptr);
 		return;
 	}
 
@@ -256,6 +270,7 @@ void UForecastScreenWidget::ShowDetail(const FForecastEntry* Entry)
 	{
 		AddProductRow(Line, !bSignal);
 	}
+	ShowCommitPanel(Entry);
 }
 
 void UForecastScreenWidget::AddProductRow(const FForecastProductLine& Line, bool bActive)
@@ -303,6 +318,181 @@ void UForecastScreenWidget::AddProductRow(const FForecastProductLine& Line, bool
 				FText::AsNumber(FMath::RoundToInt(Line.HeldContainers)), ForecastFormat::Money(Line.HeldValue)).ToString()
 			: NSLOCTEXT("Deadline", "ForecastHeldNone", "elinde yok").ToString(),
 		Line.HeldContainers > 0.f ? DeadlineUI::Body : DeadlineUI::Muted, false);
+}
+
+// --- Commitment panel -------------------------------------------------------------
+
+void UForecastScreenWidget::ShowCommitPanel(const FForecastEntry* Entry)
+{
+	// Only a signal that pushes a price can be committed to: a running event
+	// is no longer a forecast, and a route event has no product to buy.
+	const bool bCommittable = Entry && Entry->Status == EForecastStatus::Signal
+		&& Entry->Products.Num() > 0 && Entry->ImpactMax > 0.f;
+	if (CommitFrame)
+	{
+		CommitFrame->SetVisibility(bCommittable ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (!bCommittable)
+	{
+		return;
+	}
+	if (CommitForEventID != Entry->EventID)
+	{
+		CommitForEventID = Entry->EventID;
+		CommitProductIndex = 0;
+		CommitQty = 1;
+		CommitHold = FMath::Clamp(UDeadlineSettings::Get().CommitHoldDaysDefault, 1,
+			FMath::Max(1, UDeadlineSettings::Get().CommitHoldDaysMax));
+	}
+	RefreshCommitPanel();
+}
+
+void UForecastScreenWidget::RefreshCommitPanel()
+{
+	const FForecastEntry* Entry = Board.FindByPredicate([this](const FForecastEntry& E) { return E.EventID == CommitForEventID; });
+	UForecastSubsystem* Forecast = GetForecast();
+	const UGameInstance* GI = GetGameInstance();
+	const UEconomySubsystem* Economy = GI ? GI->GetSubsystem<UEconomySubsystem>() : nullptr;
+	if (!Entry || !Forecast || !Economy || Entry->Products.Num() == 0)
+	{
+		return;
+	}
+
+	// --- Already committed: progress and the way out --------------------------
+	FForecastCommitment Existing;
+	if (Entry->CommitmentID != INDEX_NONE && Forecast->GetCommitment(Entry->CommitmentID, Existing))
+	{
+		if (CommitControls) { CommitControls->SetVisibility(ESlateVisibility::Collapsed); }
+		const FForecastProductLine* Line = Entry->Products.FindByPredicate([&Existing](const FForecastProductLine& L)
+		{
+			return L.ProductID == Existing.ProductID;
+		});
+		const FText Product = FText::FromString(Line ? Line->Name : Existing.ProductID.ToString());
+		if (CommitStatusText)
+		{
+			CommitStatusText->SetText(FText::Format(NSLOCTEXT("Deadline", "CommitProgress",
+				"{0}: {1} / {2} konteyner alındı"),
+				Product, FText::AsNumber(Existing.BoughtContainers), FText::AsNumber(Existing.TargetContainers)));
+			CommitStatusText->SetColorAndOpacity(FSlateColor(Existing.BoughtContainers >= Existing.TargetContainers
+				? DeadlineUI::Profit : DeadlineUI::Body));
+		}
+		if (CommitBudgetText)
+		{
+			CommitBudgetText->SetText(FText::Format(NSLOCTEXT("Deadline", "CommitLockedInfo",
+				"Kilitli kalan {0} — yalnızca {1} alımına harcanır, gün {2}'de serbest kalır. Değerlendirme: gün {3}."),
+				ForecastFormat::Money(Existing.LockRemaining), Product,
+				FText::AsNumber(Existing.ExpectedDay), FText::AsNumber(Existing.GetResolveDay())));
+			CommitBudgetText->SetColorAndOpacity(FSlateColor(DeadlineUI::Muted));
+		}
+		if (CommitButtonText) { CommitButtonText->SetText(NSLOCTEXT("Deadline", "CommitCancel", "VAZGEÇ")); }
+		if (CommitButton) { CommitButton->SetIsEnabled(true); }
+		return;
+	}
+
+	// --- Choosing ---------------------------------------------------------------
+	if (CommitControls) { CommitControls->SetVisibility(ESlateVisibility::Visible); }
+	CommitProductIndex = FMath::Clamp(CommitProductIndex, 0, Entry->Products.Num() - 1);
+	const FForecastProductLine& Line = Entry->Products[CommitProductIndex];
+	const int32 MaxQty = FMath::Max(1, Forecast->GetMaxAffordable(Line.ProductID));
+	CommitQty = FMath::Clamp(CommitQty, 1, MaxQty);
+	const int32 MaxHold = FMath::Max(1, UDeadlineSettings::Get().CommitHoldDaysMax);
+	CommitHold = FMath::Clamp(CommitHold, 1, MaxHold);
+
+	const float UnitPrice = Economy->GetBuyPrice(Line.ProductID);
+	const float Budget = UnitPrice * CommitQty;
+	const ECommitRefusal Refusal = Forecast->CanCommit(Entry->EventID, Line.ProductID, CommitQty);
+
+	if (CommitStatusText)
+	{
+		CommitStatusText->SetText(NSLOCTEXT("Deadline", "CommitPrompt",
+			"Bu olursa fiyatı yükselir diyorsan: ürünü, miktarı ve bekleme süresini seç."));
+		CommitStatusText->SetColorAndOpacity(FSlateColor(DeadlineUI::Muted));
+	}
+	if (CommitProductText)
+	{
+		CommitProductText->SetText(FText::Format(NSLOCTEXT("Deadline", "CommitProduct", "{0}  ·  {1}/konteyner  ({2}/{3})"),
+			FText::FromString(Line.Name), ForecastFormat::Money(UnitPrice),
+			FText::AsNumber(CommitProductIndex + 1), FText::AsNumber(Entry->Products.Num())));
+	}
+	if (CommitQtyText)
+	{
+		CommitQtyText->SetText(FText::AsNumber(CommitQty));
+	}
+	if (CommitHoldText)
+	{
+		CommitHoldText->SetText(FText::Format(NSLOCTEXT("Deadline", "CommitHoldDays", "{0} gün"), FText::AsNumber(CommitHold)));
+	}
+	if (QtyMinusButton) { QtyMinusButton->SetIsEnabled(CommitQty > 1); }
+	if (QtyPlusButton) { QtyPlusButton->SetIsEnabled(CommitQty < MaxQty); }
+	if (HoldMinusButton) { HoldMinusButton->SetIsEnabled(CommitHold > 1); }
+	if (HoldPlusButton) { HoldPlusButton->SetIsEnabled(CommitHold < MaxHold); }
+	const bool bManyProducts = Entry->Products.Num() > 1;
+	if (ProductPrevButton) { ProductPrevButton->SetIsEnabled(bManyProducts); }
+	if (ProductNextButton) { ProductNextButton->SetIsEnabled(bManyProducts); }
+
+	if (CommitBudgetText)
+	{
+		FText Budgeted;
+		FLinearColor Colour = DeadlineUI::Body;
+		switch (Refusal)
+		{
+		case ECommitRefusal::AlreadyCommitted:
+			Budgeted = NSLOCTEXT("Deadline", "CommitAlready", "Bu üründe zaten açık bir taahhüdün var.");
+			Colour = DeadlineUI::Warn;
+			break;
+		case ECommitRefusal::NotEnoughFunds:
+			Budgeted = FText::Format(NSLOCTEXT("Deadline", "CommitNoFunds", "Serbest paran yetmiyor: {0} gerekli, {1} var."),
+				ForecastFormat::Money(Budget), ForecastFormat::Money(Economy->GetAvailableFunds()));
+			Colour = DeadlineUI::Loss;
+			break;
+		default:
+			Budgeted = FText::Format(NSLOCTEXT("Deadline", "CommitBudget",
+				"{0} kilitlenir, gün {1}'e kadar. Değerlendirme: gün {2}."),
+				ForecastFormat::Money(Budget), FText::AsNumber(Entry->Day), FText::AsNumber(Entry->Day + CommitHold));
+			break;
+		}
+		CommitBudgetText->SetText(Budgeted);
+		CommitBudgetText->SetColorAndOpacity(FSlateColor(Colour));
+	}
+	if (CommitButtonText) { CommitButtonText->SetText(NSLOCTEXT("Deadline", "CommitDo", "TAAHHÜT ET")); }
+	if (CommitButton) { CommitButton->SetIsEnabled(Refusal == ECommitRefusal::None); }
+}
+
+void UForecastScreenWidget::StepProduct(int32 Delta)
+{
+	const FForecastEntry* Entry = Board.FindByPredicate([this](const FForecastEntry& E) { return E.EventID == CommitForEventID; });
+	if (!Entry || Entry->Products.Num() == 0)
+	{
+		return;
+	}
+	const int32 Count = Entry->Products.Num();
+	CommitProductIndex = ((CommitProductIndex + Delta) % Count + Count) % Count;
+	RefreshCommitPanel();
+}
+
+void UForecastScreenWidget::HandleProductPrev() { StepProduct(-1); }
+void UForecastScreenWidget::HandleProductNext() { StepProduct(1); }
+void UForecastScreenWidget::HandleQtyMinus() { --CommitQty; RefreshCommitPanel(); }
+void UForecastScreenWidget::HandleQtyPlus() { ++CommitQty; RefreshCommitPanel(); }
+void UForecastScreenWidget::HandleHoldMinus() { --CommitHold; RefreshCommitPanel(); }
+void UForecastScreenWidget::HandleHoldPlus() { ++CommitHold; RefreshCommitPanel(); }
+
+void UForecastScreenWidget::HandleCommitClicked()
+{
+	UForecastSubsystem* Forecast = GetForecast();
+	const FForecastEntry* Entry = Board.FindByPredicate([this](const FForecastEntry& E) { return E.EventID == CommitForEventID; });
+	if (!Forecast || !Entry || Entry->Products.Num() == 0)
+	{
+		return;
+	}
+	// Either call succeeds into OnBoardChanged, which refreshes the screen.
+	if (Entry->CommitmentID != INDEX_NONE)
+	{
+		Forecast->CancelCommitment(Entry->CommitmentID);
+		return;
+	}
+	const FName Product = Entry->Products[FMath::Clamp(CommitProductIndex, 0, Entry->Products.Num() - 1)].ProductID;
+	Forecast->Commit(Entry->EventID, Product, CommitQty, CommitHold);
 }
 
 // --- Events --------------------------------------------------------------------

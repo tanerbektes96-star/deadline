@@ -19,12 +19,27 @@
 // impact range is the event's template range from DT_Events, never the value
 // the calendar rolled, so the board cannot give the forecast away.
 //
-// Commitments (amount + budget lock + duration) are the next roadmap item and
-// will live in this subsystem too.
+// Commitments (GDD 4 step 2: "picks a product, says it will rise, sets the
+// amount and the budget"). A commitment is made on an open signal, for one of
+// the products it would push:
+//
+//   amount    containers you mean to buy before it lands;
+//   budget    amount x today's buy price, locked in UEconomySubsystem until
+//             the expected day -- the money is still yours, but only that
+//             product can spend it; what is left comes back on the day;
+//   duration  how many days after the expected day you hold before the
+//             forecast is judged.
+//
+// On the resolve day the commitment is judged against what actually happened
+// (the event started on its day or it did not -- public by then, never the
+// calendar's truth ahead of time) and against what the goods bought for it are
+// worth: sales since the commitment plus today's value of the rest, less what
+// they cost. The result card and the notebook (next roadmap items) read it.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Economy/EconomySubsystem.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ForecastSubsystem.generated.h"
 
@@ -128,10 +143,121 @@ struct FForecastEntry
 
 	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
 	float GainIfHappensMax = 0.f;
+
+	/** Your live commitment on this signal, or INDEX_NONE. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 CommitmentID = INDEX_NONE;
+};
+
+UENUM(BlueprintType)
+enum class ECommitmentState : uint8
+{
+	/** Before the expected day: the budget is locked, buy against it. */
+	Open,
+	/** Expected day passed, lock released: holding until the resolve day. */
+	Holding,
+	/** Judged. */
+	Resolved,
+	/** Called off before the expected day. Not judged. */
+	Cancelled
+};
+
+USTRUCT(BlueprintType)
+struct FForecastCommitment
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 ID = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	FName EventID;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	FName ProductID;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	ECommitmentState State = ECommitmentState::Open;
+
+	/** What the source said when you committed. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float Confidence = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 CommitDay = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 ExpectedDay = 0;
+
+	/** Days held after ExpectedDay. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 HoldDays = 1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 TargetContainers = 0;
+
+	/** Locked at commit: TargetContainers x BuyPriceAtCommit. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float Budget = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float BuyPriceAtCommit = 0.f;
+
+	/** Bought since committing, up to the expected day. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 BoughtContainers = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float Spent = 0.f;
+
+	/** Sold since committing, capped at what was bought for it. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	int32 SoldContainers = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float Proceeds = 0.f;
+
+	/** Still locked. Mirrors UEconomySubsystem while Open; kept here so a save
+	    can put the lock back. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float LockRemaining = 0.f;
+
+	// --- Filled in when judged ---------------------------------------------
+
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	bool bEventHappened = false;
+
+	/** Market price of one container on the resolve day. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float PriceAtResolve = 0.f;
+
+	/** Proceeds + value of the unsold rest - Spent. */
+	UPROPERTY(BlueprintReadOnly, Category = "Forecast")
+	float Result = 0.f;
+
+	int32 GetResolveDay() const { return ExpectedDay + HoldDays; }
+	bool IsLive() const { return State == ECommitmentState::Open || State == ECommitmentState::Holding; }
+};
+
+/** Why a commitment was refused, for the panel to say. */
+UENUM(BlueprintType)
+enum class ECommitRefusal : uint8
+{
+	None,
+	/** Not an open signal today, or the product is not one it pushes. */
+	NotOnBoard,
+	/** You already have a live commitment on this product. */
+	AlreadyCommitted,
+	BadAmount,
+	/** The unlocked funds do not cover the budget. */
+	NotEnoughFunds
 };
 
 /** The board changed: new day, new bulletin, or your stock moved. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnForecastBoardChanged);
+
+/** A commitment was judged: the hook for the result card (GDD 4 step 6). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCommitmentResolved, const FForecastCommitment&, Commitment);
 
 UCLASS()
 class DEADLINE__API UForecastSubsystem : public UGameInstanceSubsystem
@@ -154,7 +280,54 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
 	float GetTotalExposure() const;
 
+	// --- Commitments -------------------------------------------------------
+
+	UPROPERTY(BlueprintAssignable, Category = "Deadline|Forecast")
+	FOnCommitmentResolved OnCommitmentResolved;
+
+	/** Would Commit() accept this? Also what the panel asks before enabling
+	    the button. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
+	ECommitRefusal CanCommit(FName EventID, FName ProductID, int32 Containers) const;
+
+	/** Commit on today's open signal EventID: lock Containers x today's buy
+	    price of ProductID, judge HoldDays after the expected day. Returns the
+	    new commitment's ID, or INDEX_NONE (see CanCommit). */
+	UFUNCTION(BlueprintCallable, Category = "Deadline|Forecast")
+	int32 Commit(FName EventID, FName ProductID, int32 Containers, int32 HoldDays);
+
+	/** Call off an Open commitment: the lock comes back, nothing is judged. */
+	UFUNCTION(BlueprintCallable, Category = "Deadline|Forecast")
+	bool CancelCommitment(int32 CommitmentID);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Deadline|Forecast")
+	bool GetCommitment(int32 CommitmentID, FForecastCommitment& Out) const;
+
+	/** Every commitment this run, oldest first: the notebook's source. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
+	const TArray<FForecastCommitment>& GetCommitments() const { return Commitments; }
+
+	/** Most containers the unlocked funds buy at today's price. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Forecast")
+	int32 GetMaxAffordable(FName ProductID) const;
+
+	/** New game. */
+	void ResetAll();
+
+	/** Load: put the commitments back and re-lock the open budgets. Call
+	    after the economy has its funds back. */
+	void RestoreCommitments(const TArray<FForecastCommitment>& InCommitments);
+
 private:
+	const FForecastCommitment* FindLive(FName ProductID) const;
+	FForecastCommitment* FindByID(int32 CommitmentID);
+	void CloseLock(FForecastCommitment& C);
+	void Judge(FForecastCommitment& C);
+	void AdvanceCommitments(int32 Today);
+
+	UFUNCTION()
+	void HandleTransaction(const FTransactionRecord& Record);
+
 	void FillProducts(FForecastEntry& Entry, const TArray<FName>& ProductIDs, int32 EventStartDay) const;
 
 	UFUNCTION()
@@ -168,4 +341,7 @@ private:
 	UMarketSubsystem* GetMarket() const;
 	UProductCatalogSubsystem* GetCatalogue() const;
 	UTimeSubsystem* GetTime() const;
+
+	TArray<FForecastCommitment> Commitments;
+	int32 NextCommitmentID = 1;
 };
