@@ -2,6 +2,7 @@
 
 #include "Events/EventSubsystem.h"
 
+#include "Core/DeadlineLocale.h"
 #include "Core/DeadlineSettings.h"
 #include "Core/SaveSubsystem.h"
 #include "Core/TimeSubsystem.h"
@@ -9,24 +10,10 @@
 #include "Data/ProductCatalogSubsystem.h"
 #include "Engine/DataTable.h"
 #include "Engine/GameInstance.h"
-#include "Internationalization/Culture.h"
-#include "Internationalization/Internationalization.h"
 
 namespace
 {
-	bool IsTurkish()
-	{
-		return FInternationalization::Get().GetCurrentLanguage()->GetTwoLetterISOLanguageName() == TEXT("tr");
-	}
-
-	/** TR when the game runs in Turkish and the row has it, EN otherwise --
-	    the same rule as UProductCatalogSubsystem::GetDisplayName. */
-	const FString& PickText(const FString& TR, const FString& EN)
-	{
-		return (IsTurkish() && !TR.IsEmpty()) ? TR : EN;
-	}
-
-	const FEventRow* FindRow(FName EventID)
+	const FEventRow* FindEventRow(FName EventID)
 	{
 		const UDataTable* Table = UDeadlineSettings::Get().EventTable.LoadSynchronous();
 		return Table ? Table->FindRow<FEventRow>(EventID, TEXT("UEventSubsystem"), false) : nullptr;
@@ -168,10 +155,10 @@ FEventSignal UEventSubsystem::MakeSignal(const FScheduledEvent& Entry) const
 	Signal.Confidence = Entry.Confidence;
 	Signal.SignalDay = Entry.SignalDay;
 	Signal.ExpectedDay = Entry.StartDay;
-	if (const FEventRow* Row = FindRow(Entry.EventID))
+	if (const FEventRow* Row = FindEventRow(Entry.EventID))
 	{
-		Signal.Name = PickText(Row->NameTR, Row->NameEN);
-		Signal.Text = PickText(Row->SignalTR, Row->SignalEN);
+		Signal.Name = DeadlineLocale::Pick(Row->NameTR, Row->NameEN);
+		Signal.Text = DeadlineLocale::Pick(Row->SignalTR, Row->SignalEN);
 		Signal.RouteCostMultiplier = Row->RouteCostMultiplier;
 	}
 	Signal.AffectedProducts = GetAffectedProducts(Entry.EventID);
@@ -186,10 +173,10 @@ FActiveEvent UEventSubsystem::MakeActive(const FScheduledEvent& Entry) const
 	Active.EndDay = Entry.EndDay;
 	Active.Impact = Entry.Impact;
 	Active.bForced = Entry.bForced;
-	if (const FEventRow* Row = FindRow(Entry.EventID))
+	if (const FEventRow* Row = FindEventRow(Entry.EventID))
 	{
-		Active.Name = PickText(Row->NameTR, Row->NameEN);
-		Active.Headline = PickText(Row->HeadlineTR, Row->HeadlineEN);
+		Active.Name = DeadlineLocale::Pick(Row->NameTR, Row->NameEN);
+		Active.Headline = DeadlineLocale::Pick(Row->HeadlineTR, Row->HeadlineEN);
 		Active.RouteCostMultiplier = Row->RouteCostMultiplier;
 	}
 	Active.AffectedProducts = GetAffectedProducts(Entry.EventID);
@@ -198,8 +185,8 @@ FActiveEvent UEventSubsystem::MakeActive(const FScheduledEvent& Entry) const
 
 FString UEventSubsystem::GetEventName(FName EventID) const
 {
-	const FEventRow* Row = FindRow(EventID);
-	return Row ? PickText(Row->NameTR, Row->NameEN) : EventID.ToString();
+	const FEventRow* Row = FindEventRow(EventID);
+	return Row ? DeadlineLocale::Pick(Row->NameTR, Row->NameEN) : EventID.ToString();
 }
 
 // --- Simulation hooks --------------------------------------------------------

@@ -3,6 +3,7 @@
 #include "Core/DeadlineHUD.h"
 
 #include "Actors/ContainerActor.h"
+#include "Core/DeadlineLocale.h"
 #include "Core/TimeSubsystem.h"
 #include "Data/ProductCatalogSubsystem.h"
 #include "Economy/EconomySubsystem.h"
@@ -55,6 +56,10 @@ void ADeadlineHUD::BeginPlay()
 		{
 			Fleet->OnCargoSpoiled.AddDynamic(this, &ADeadlineHUD::HandleStockSpoiled);
 		}
+		if (UNewsSubsystem* News = GI->GetSubsystem<UNewsSubsystem>())
+		{
+			News->OnBulletinPublished.AddDynamic(this, &ADeadlineHUD::HandleBulletin);
+		}
 	}
 }
 
@@ -75,6 +80,13 @@ void ADeadlineHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (UInventorySubsystem* Inventory = GetInventory())
 	{
 		Inventory->OnStockChanged.RemoveDynamic(this, &ADeadlineHUD::HandleStockChanged);
+	}
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (UNewsSubsystem* News = GI->GetSubsystem<UNewsSubsystem>())
+		{
+			News->OnBulletinPublished.RemoveDynamic(this, &ADeadlineHUD::HandleBulletin);
+		}
 	}
 	Super::EndPlay(EndPlayReason);
 }
@@ -208,6 +220,80 @@ void ADeadlineHUD::DrawHUD()
 	DrawLoadZone();
 	DrawCarried();
 	DrawToasts();
+	DrawBulletin();
+}
+
+void ADeadlineHUD::HandleBulletin(const FNewsBulletin& Bulletin)
+{
+	ShownBulletin = Bulletin;
+	BulletinExpiresAtSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() + BulletinDuration : 0.f;
+}
+
+void ADeadlineHUD::DrawBulletin()
+{
+	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	if (ShownBulletin.Items.Num() == 0 || Now >= BulletinExpiresAtSeconds)
+	{
+		return;
+	}
+
+	constexpr int32 MaxLines = 7;
+	constexpr int32 MaxChars = 110;
+	const float Width = FMath::Min(1000.f, Canvas->SizeX - 2.f * Margin);
+	const float X = (Canvas->SizeX - Width) * 0.5f;
+	const int32 Lines = FMath::Min(ShownBulletin.Items.Num(), MaxLines);
+	DrawRect(FLinearColor(0.086f, 0.098f, 0.102f, 0.88f), X - 12.f, Margin - 8.f, Width + 24.f, LineStep * (Lines + 1.6f) + 16.f);
+
+	float Y = Margin;
+	const FString Header = (ShownBulletin.Hour == UNewsSubsystem::MorningHour)
+		? DL_PRINTF("%02d:00  HABER BÜLTENİ  —  Gün %d", "%02d:00  NEWS BULLETIN  —  Day %d",
+			ShownBulletin.Hour, ShownBulletin.Day)
+		: DL_PRINTF("%02d:00  ÖĞLE GÜNCELLEMESİ  —  Gün %d", "%02d:00  MIDDAY UPDATE  —  Day %d",
+			ShownBulletin.Hour, ShownBulletin.Day);
+	DrawLine(Header, X, Y, ColLabel, 1.1f);
+	Y += 4.f;
+
+	for (int32 i = 0; i < Lines; ++i)
+	{
+		const FNewsItem& Item = ShownBulletin.Items[i];
+		FString Line;
+		FLinearColor Colour = ColValue;
+		switch (Item.Kind)
+		{
+		case ENewsKind::Rumour:
+			// The confidence leads: it is the one number the forecast turns on.
+			Line = DL_PRINTF("SÖYLENTİ %%%.0f  %s  (gün %d)", "RUMOUR %.0f%%  %s  (day %d)",
+				Item.Confidence * 100.f, *Item.Text, Item.RelatedDay);
+			Colour = ColWarn;
+			break;
+		case ENewsKind::Headline:
+			Line = FString::Printf(TEXT("%s  %s"), DeadlineLocale::Pick(TEXT("SON DAKİKA"), TEXT("BREAKING")), *Item.Text);
+			Colour = ColValue;
+			break;
+		case ENewsKind::Denied:
+			Line = FString::Printf(TEXT("%s  %s"), DeadlineLocale::Pick(TEXT("YALANLANDI"), TEXT("DENIED")), *Item.Text);
+			Colour = ColLabel;
+			break;
+		case ENewsKind::Ended:
+			Line = FString::Printf(TEXT("%s  %s"), DeadlineLocale::Pick(TEXT("BİTTİ"), TEXT("OVER")), *Item.Text);
+			Colour = ColGood;
+			break;
+		case ENewsKind::Update:
+			Line = FString::Printf(TEXT("%s  %s"), DeadlineLocale::Pick(TEXT("PİYASA"), TEXT("MARKET")), *Item.Text);
+			Colour = ColValue;
+			break;
+		}
+		if (Line.Len() > MaxChars)
+		{
+			Line = Line.Left(MaxChars - 1) + TEXT("…");
+		}
+		DrawLine(Line, X, Y, Colour);
+	}
+	if (ShownBulletin.Items.Num() > MaxLines)
+	{
+		DrawLine(DL_PRINTF("… ve %d haber daha", "… and %d more",
+			ShownBulletin.Items.Num() - MaxLines), X, Y, ColLabel, 0.9f);
+	}
 }
 
 void ADeadlineHUD::DrawTravelCover()

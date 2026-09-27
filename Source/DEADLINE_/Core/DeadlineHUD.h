@@ -14,6 +14,7 @@
 
 #include "CoreMinimal.h"
 #include "Economy/EconomySubsystem.h"
+#include "Events/NewsSubsystem.h"
 #include "GameFramework/HUD.h"
 #include "DeadlineHUD.generated.h"
 
@@ -64,6 +65,16 @@ protected:
 	UFUNCTION()
 	void HandleStockSpoiled(FName ProductID, int32 Containers, bool bWasOnTheBooks);
 
+	/** 08:00 and 12:00 news (GDD 16). Shown as a panel across the top for
+	    BulletinDuration seconds; the full log is Dl_News until the news
+	    screen exists. */
+	UFUNCTION()
+	void HandleBulletin(const FNewsBulletin& Bulletin);
+
+	/** Real seconds a bulletin stays on screen. */
+	UPROPERTY(EditDefaultsOnly, Category = "Deadline|HUD")
+	float BulletinDuration = 14.f;
+
 private:
 	void DrawFunds(float& Y);
 	void DrawStorage(float& Y);
@@ -72,6 +83,7 @@ private:
 	void DrawLoadZone();
 	void DrawCarried();
 	void DrawToasts();
+	void DrawBulletin();
 
 	/** Full-screen cover while a trip is under way. GDD 9.2 asks for a couple
 	    of seconds inside the cab; until there is a cab to sit in, the honest
@@ -90,4 +102,9 @@ private:
 
 	UPROPERTY()
 	TArray<FHUDToast> Toasts;
+
+	UPROPERTY()
+	FNewsBulletin ShownBulletin;
+
+	float BulletinExpiresAtSeconds = 0.f;
 };

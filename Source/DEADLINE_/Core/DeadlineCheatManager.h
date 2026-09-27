@@ -172,6 +172,12 @@ public:
 	UFUNCTION(exec)
 	void Dl_ForceEvent(FName EventID = TEXT("E02"), float Impact = -1.f, int32 Duration = -1);
 
+	/** The news bulletins already out over the last Days days, newest first
+	    (GDD 16: 08:00 bulletin, 12:00 update). Only what the player could
+	    have heard -- no answers. */
+	UFUNCTION(exec)
+	void Dl_News(int32 Days = 2);
+
 	// --- Balance data ------------------------------------------------------
 
 	/** Re-read Content/Deadline/Data/DT_Products.csv into the running game.

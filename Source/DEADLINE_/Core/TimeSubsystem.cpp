@@ -24,6 +24,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	LastRealSeconds = FPlatformTime::Seconds();
 	LastBroadcastDay = 0;
+	LastBroadcastHour = 0;
 
 	if (const UGameInstance* GI = GetGameInstance())
 	{
@@ -104,6 +105,11 @@ void UTimeSubsystem::AdvanceMinutes(int32 Minutes)
 	PollDayRollover();
 }
 
+int64 UTimeSubsystem::GetHourIndex() const
+{
+	return static_cast<int64>(FMath::FloorToDouble(GetTotalMinutes() / 60.0));
+}
+
 void UTimeSubsystem::PollDayRollover()
 {
 	const int32 Day = GetDay();
@@ -112,6 +118,20 @@ void UTimeSubsystem::PollDayRollover()
 		LastBroadcastDay = Day;
 		OnDayChanged.Broadcast(Day);
 	}
+
+	const int64 Hour = GetHourIndex();
+	if (Hour > LastBroadcastHour)
+	{
+		// A week-long skip would be 168 broadcasts of hours nobody lived
+		// through; report the last two days' worth and drop the rest.
+		constexpr int64 MaxCatchUpHours = 48;
+		int64 First = FMath::Max(LastBroadcastHour + 1, Hour - MaxCatchUpHours + 1);
+		LastBroadcastHour = Hour;
+		for (int64 H = First; H <= Hour; ++H)
+		{
+			OnHourChanged.Broadcast(static_cast<int32>(H / 24), static_cast<int32>(H % 24));
+		}
+	}
 }
 
 void UTimeSubsystem::ResetAll()
@@ -119,6 +139,7 @@ void UTimeSubsystem::ResetAll()
 	BankedMinutes = 0.0;
 	LastRealSeconds = FPlatformTime::Seconds();
 	LastBroadcastDay = 0;
+	LastBroadcastHour = 0;
 	GameSpeed = EGameSpeed::Normal;
 }
 
@@ -127,4 +148,5 @@ void UTimeSubsystem::RestoreTotalMinutes(double InTotalMinutes)
 	BankedMinutes = InTotalMinutes;
 	LastRealSeconds = FPlatformTime::Seconds();
 	LastBroadcastDay = GetDay();
+	LastBroadcastHour = GetHourIndex();
 }

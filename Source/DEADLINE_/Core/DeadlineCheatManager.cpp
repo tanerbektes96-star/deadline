@@ -16,6 +16,7 @@
 #include "Economy/EconomySubsystem.h"
 #include "Economy/MarketSubsystem.h"
 #include "Events/EventSubsystem.h"
+#include "Events/NewsSubsystem.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Engine/Engine.h"
@@ -944,6 +945,28 @@ void UDeadlineCheatManager::Dl_ForceEvent(FName EventID, float Impact, int32 Dur
 	Report(FString::Printf(TEXT("%s started: %d products pushed, routes x%.2f."),
 		*Events->GetEventName(EventID), Products.Num(),
 		Events->GetRouteCostMultiplier(Time ? Time->GetDay() : 0)));
+}
+
+void UDeadlineCheatManager::Dl_News(int32 Days)
+{
+	const UNewsSubsystem* News = GetSub<UNewsSubsystem>(this);
+	if (!News)
+	{
+		return;
+	}
+	const TArray<FNewsBulletin> Log = News->GetNewsLog(Days);
+	Report(FString::Printf(TEXT("%d bulletins in the last %d days (full text in the Output Log)"), Log.Num(), Days));
+	static const TCHAR* KindNames[] = { TEXT("RUMOUR"), TEXT("HEADLINE"), TEXT("DENIED"), TEXT("ENDED"), TEXT("UPDATE") };
+	for (const FNewsBulletin& B : Log)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]   Day %d %02d:00"), B.Day, B.Hour);
+		for (const FNewsItem& Item : B.Items)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Deadline]     %-8s %s %s%s"),
+				KindNames[static_cast<int32>(Item.Kind)], *Item.EventID.ToString(), *Item.Text,
+				Item.Kind == ENewsKind::Rumour ? *FString::Printf(TEXT("  [%.0f%%, day %d]"), Item.Confidence * 100.f, Item.RelatedDay) : TEXT(""));
+		}
+	}
 }
 
 void UDeadlineCheatManager::Dl_OpenMarket()

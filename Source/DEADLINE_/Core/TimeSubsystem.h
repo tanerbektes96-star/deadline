@@ -26,6 +26,8 @@ enum class EGameSpeed : uint8
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDayChanged, int32, NewDay);
+/** A whole game hour has been reached (e.g. Day 3, Hour 8 = 08:00). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHourChanged, int32, Day, int32, Hour);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameSpeedChanged, EGameSpeed, NewSpeed);
 
 UCLASS()
@@ -44,6 +46,13 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Deadline|Time")
 	FOnGameSpeedChanged OnGameSpeedChanged;
+
+	/** Fired once for every game hour reached, in order, including hours
+	    jumped over by a trip or a time skip -- so the 08:00 bulletin
+	    (GDD 16) is never lost to a long drive. A skip of more than two days
+	    reports only the last 48 hours. Same 1 Hz poll as the day. */
+	UPROPERTY(BlueprintAssignable, Category = "Deadline|Time")
+	FOnHourChanged OnHourChanged;
 
 	/** Total game minutes since the run started. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Time")
@@ -91,8 +100,11 @@ private:
 	/** Fold elapsed real time into BankedMinutes and restamp. */
 	void Flush();
 
-	/** 1 Hz: only checks whether the day number rolled over. */
+	/** 1 Hz: only checks whether the day or the hour rolled over. */
 	void PollDayRollover();
+
+	/** Whole game hours since the run started. */
+	int64 GetHourIndex() const;
 
 	UPROPERTY()
 	EGameSpeed GameSpeed = EGameSpeed::Normal;
@@ -104,6 +116,8 @@ private:
 	double LastRealSeconds = 0.0;
 
 	int32 LastBroadcastDay = 0;
+
+	int64 LastBroadcastHour = 0;
 
 	FTimerHandle DayPollTimer;
 };
