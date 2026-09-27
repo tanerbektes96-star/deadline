@@ -168,6 +168,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Events")
 	FString GetEventName(FName EventID) const;
 
+	/** The price push an event of this kind can have, from DT_Events: what
+	    analysts would quote. Not the value the calendar rolled. */
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Deadline|Events")
+	bool GetImpactRange(FName EventID, float& OutMin, float& OutMax) const;
+
 	// --- Dev and tests ----------------------------------------------------
 
 	/** Every entry with SignalDay in [FromDay, ToDay], truth included, plus

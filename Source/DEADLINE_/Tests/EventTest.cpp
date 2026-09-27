@@ -237,6 +237,22 @@ bool FDeadlineEventCalendarTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("No overlap of one kind, no overflow, leads/lengths/impacts in range"), Violations, 0);
+
+	// The board is never empty: every day of every run has something in the
+	// air, starting with a signal on day 0 (a fresh run used to open empty
+	// 60% of the time).
+	int32 EmptyDays = 0, NoOpeningSignal = 0;
+	for (int32 Seed = 1; Seed <= 200; ++Seed)
+	{
+		const FEventCalendar Cal = Roll(Templates, Seed, 60);
+		NoOpeningSignal += Cal.GetEntries().ContainsByPredicate([](const FScheduledEvent& E) { return E.SignalDay == 0; }) ? 0 : 1;
+		for (int32 Day = 0; Day <= 60; ++Day)
+		{
+			EmptyDays += Cal.GetEntries().ContainsByPredicate([Day](const FScheduledEvent& E) { return E.IsInFlightOn(Day); }) ? 0 : 1;
+		}
+	}
+	TestEqual(TEXT("Every run opens with a signal on day 0"), NoOpeningSignal, 0);
+	TestEqual(TEXT("No day without a signal or an event in the air"), EmptyDays, 0);
 	return true;
 }
 

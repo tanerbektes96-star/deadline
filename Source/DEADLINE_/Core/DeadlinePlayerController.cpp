@@ -150,3 +150,30 @@ void ADeadlinePlayerController::CloseTravelScreen()
 {
 	CloseScreen(TravelScreen);
 }
+
+bool ADeadlinePlayerController::IsForecastScreenOpen() const
+{
+	return ForecastScreen != nullptr && ForecastScreen->IsInViewport();
+}
+
+void ADeadlinePlayerController::OpenForecastScreen()
+{
+	OpenScreen(UDeadlineSettings::Get().ForecastScreenWidget, TEXT("Forecast Screen Widget"), ForecastScreen);
+}
+
+void ADeadlinePlayerController::CloseForecastScreen()
+{
+	CloseScreen(ForecastScreen);
+}
+
+void ADeadlinePlayerController::ToggleForecastScreen()
+{
+	if (IsForecastScreenOpen())
+	{
+		CloseForecastScreen();
+	}
+	else
+	{
+		OpenForecastScreen();
+	}
+}

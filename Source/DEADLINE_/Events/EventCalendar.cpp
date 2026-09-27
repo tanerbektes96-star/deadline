@@ -74,7 +74,7 @@ void FEventCalendar::RollDay(int32 Day)
 	const float RollTruth = Stream.GetFraction();
 	static_assert(DrawsPerDay == 7, "Keep DrawsPerDay in step with the draws above.");
 
-	if (RollChance >= Params.DailyChance || Templates.Num() == 0)
+	if (Templates.Num() == 0)
 	{
 		return;
 	}
@@ -89,7 +89,14 @@ void FEventCalendar::RollDay(int32 Day)
 			Busy.Add(E.EventID);
 		}
 	}
-	if (InFlight >= Params.MaxConcurrent)
+
+	// Never a day with nothing to forecast: when nothing is in the air, a
+	// signal comes regardless of the roll. Without this, 60% of runs opened
+	// on an empty board and one in five stayed empty for three days -- the
+	// forecast loop had nothing to start from. The draws above are made
+	// either way, so this changes which days get signals, not the stream.
+	const bool bQuiet = InFlight == 0;
+	if ((RollChance >= Params.DailyChance && !bQuiet) || InFlight >= Params.MaxConcurrent)
 	{
 		return;
 	}

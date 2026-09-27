@@ -189,6 +189,14 @@ FString UEventSubsystem::GetEventName(FName EventID) const
 	return Row ? DeadlineLocale::Pick(Row->NameTR, Row->NameEN) : EventID.ToString();
 }
 
+bool UEventSubsystem::GetImpactRange(FName EventID, float& OutMin, float& OutMax) const
+{
+	const FEventRow* Row = FindEventRow(EventID);
+	OutMin = Row ? Row->ImpactMin : 0.f;
+	OutMax = Row ? Row->ImpactMax : 0.f;
+	return Row != nullptr;
+}
+
 // --- Simulation hooks --------------------------------------------------------
 
 const TArray<FName>& UEventSubsystem::GetProductTags(FName ProductID) const

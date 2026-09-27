@@ -178,6 +178,14 @@ public:
 	UFUNCTION(exec)
 	void Dl_News(int32 Days = 2);
 
+	/** The forecast board as the player sees it: signals, odds, exposure. */
+	UFUNCTION(exec)
+	void Dl_Forecast();
+
+	/** Open the forecast board, for when the screen exists but N is not bound. */
+	UFUNCTION(exec)
+	void Dl_OpenForecast();
+
 	// --- Balance data ------------------------------------------------------
 
 	/** Re-read Content/Deadline/Data/DT_Products.csv into the running game.

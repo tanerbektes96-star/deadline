@@ -43,6 +43,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Data")
 	TSoftClassPtr<UUserWidget> TravelScreenWidget;
 
+	/** WBP_ForecastScreen — the forecast board (GDD 17), on N. */
+	UPROPERTY(Config, EditAnywhere, Category = "Data")
+	TSoftClassPtr<UUserWidget> ForecastScreenWidget;
+
 	// --- Starting funds (GDD 8.3) -----------------------------------------
 
 	UPROPERTY(Config, EditAnywhere, Category = "Economy")

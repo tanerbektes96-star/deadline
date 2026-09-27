@@ -243,6 +243,15 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
 	float GetStockValue() const;
 
+	/** GetStockValue for one product: warehouse and trucks, at today's
+	    price and the goods' condition. What rides on a forecast (GDD 17). */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
+	float GetStockValueOf(FName ProductID) const;
+
+	/** Containers of a product you hold, warehouse and trucks together. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")
+	float GetHeldContainers(FName ProductID) const;
+
 	/** GDD 8.2 company value, as far as it exists yet: cash + bank + stock.
 	    Equipment, debt and pending fines join it when those systems land. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|Economy")

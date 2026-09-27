@@ -52,6 +52,20 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
 	bool IsTravelScreenOpen() const;
 
+	/** The forecast board (GDD 17): today's signals, their confidence, and
+	    what you stand to gain or lose on each. */
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void OpenForecastScreen();
+
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void CloseForecastScreen();
+
+	UFUNCTION(BlueprintCallable, Category = "Deadline|UI")
+	void ToggleForecastScreen();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Deadline|UI")
+	bool IsForecastScreenOpen() const;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
@@ -76,6 +90,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> TravelScreen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> ForecastScreen;
 
 	UPROPERTY(Transient)
 	FName TravelVehicleKey;

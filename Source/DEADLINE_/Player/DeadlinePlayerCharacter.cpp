@@ -182,6 +182,10 @@ void ADeadlinePlayerCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	{
 		Input->BindAction(MarketAction, ETriggerEvent::Started, this, &ADeadlinePlayerCharacter::Input_ToggleMarket);
 	}
+	if (ForecastAction)
+	{
+		Input->BindAction(ForecastAction, ETriggerEvent::Started, this, &ADeadlinePlayerCharacter::Input_ToggleForecast);
+	}
 	if (LoadAction)
 	{
 		Input->BindAction(LoadAction, ETriggerEvent::Started, this, &ADeadlinePlayerCharacter::Input_Load);
@@ -206,6 +210,14 @@ void ADeadlinePlayerCharacter::Input_ToggleMap(const FInputActionValue& Value)
 	else
 	{
 		PC->OpenTravelScreen(LoadZoneVehicle ? LoadZoneVehicle->GetVehicleKey() : NAME_None);
+	}
+}
+
+void ADeadlinePlayerCharacter::Input_ToggleForecast(const FInputActionValue& Value)
+{
+	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetController()))
+	{
+		PC->ToggleForecastScreen();
 	}
 }
 

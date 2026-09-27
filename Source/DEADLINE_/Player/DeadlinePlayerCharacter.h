@@ -164,6 +164,7 @@ protected:
 	void Input_Load(const FInputActionValue& Value);
 	void Input_ToggleMarket(const FInputActionValue& Value);
 	void Input_ToggleMap(const FInputActionValue& Value);
+	void Input_ToggleForecast(const FInputActionValue& Value);
 
 	/** Push DefaultMappingContext into the Enhanced Input subsystem. Returns
 	    false if the context did not stick, which happens while the player
@@ -220,6 +221,11 @@ protected:
 	    the back of a truck is busy handling cargo. */
 	UPROPERTY(EditDefaultsOnly, Category = "Deadline|Input")
 	TObjectPtr<UInputAction> MapAction;
+
+	/** IA_Forecast. N — the forecast board (GDD 3.3 puts forecasts and their
+	    results on N; the notebook joins it as a second tab). */
+	UPROPERTY(EditDefaultsOnly, Category = "Deadline|Input")
+	TObjectPtr<UInputAction> ForecastAction;
 
 	/** How often the focus trace runs, in seconds. */
 	UPROPERTY(EditDefaultsOnly, Category = "Deadline|Interaction")

@@ -429,13 +429,41 @@ float UEconomySubsystem::GetTotalUnrealisedProfit() const
 
 float UEconomySubsystem::GetStockValue() const
 {
-	double Total = 0.0;
+	// Every product held anywhere, each valued once by GetStockValueOf, so
+	// the total and the per-product figure the forecast board shows cannot
+	// drift apart.
+	TSet<FName> Held;
 	if (const UInventorySubsystem* Inventory = GetInventory())
 	{
 		for (const TPair<FName, FInventoryEntry>& Pair : Inventory->GetAllEntries())
 		{
-			Total += static_cast<double>(GetSellPriceForHeldStock(Pair.Key))
-				* Pair.Value.PhysicalContainers();
+			Held.Add(Pair.Key);
+		}
+	}
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (const UFleetSubsystem* Fleet = GI->GetSubsystem<UFleetSubsystem>())
+		{
+			Held.Append(Fleet->GetAllCarriedProductIDs());
+		}
+	}
+
+	double Total = 0.0;
+	for (const FName& ID : Held)
+	{
+		Total += GetStockValueOf(ID);
+	}
+	return static_cast<float>(Total);
+}
+
+float UEconomySubsystem::GetStockValueOf(FName ProductID) const
+{
+	double Total = 0.0;
+	if (const UInventorySubsystem* Inventory = GetInventory())
+	{
+		if (const FInventoryEntry* Entry = Inventory->GetAllEntries().Find(ProductID))
+		{
+			Total += static_cast<double>(GetSellPriceForHeldStock(ProductID)) * Entry->PhysicalContainers();
 		}
 	}
 
@@ -445,14 +473,32 @@ float UEconomySubsystem::GetStockValue() const
 	{
 		if (const UFleetSubsystem* Fleet = GI->GetSubsystem<UFleetSubsystem>())
 		{
-			for (const FName& ID : Fleet->GetAllCarriedProductIDs())
+			const float InTrucks = Fleet->GetTotalContainers(ProductID);
+			if (InTrucks > 0.f)
 			{
-				Total += static_cast<double>(GetSellPrice(ID))
-					* Fleet->GetConditionMultiplier(ID) * Fleet->GetTotalContainers(ID);
+				Total += static_cast<double>(GetSellPrice(ProductID))
+					* Fleet->GetConditionMultiplier(ProductID) * InTrucks;
 			}
 		}
 	}
 	return static_cast<float>(Total);
+}
+
+float UEconomySubsystem::GetHeldContainers(FName ProductID) const
+{
+	float Held = 0.f;
+	if (const UInventorySubsystem* Inventory = GetInventory())
+	{
+		Held += Inventory->GetPhysicalContainers(ProductID);
+	}
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (const UFleetSubsystem* Fleet = GI->GetSubsystem<UFleetSubsystem>())
+		{
+			Held += Fleet->GetTotalContainers(ProductID);
+		}
+	}
+	return Held;
 }
 
 float UEconomySubsystem::GetCompanyValue() const

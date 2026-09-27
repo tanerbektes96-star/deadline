@@ -17,6 +17,7 @@
 #include "Economy/MarketSubsystem.h"
 #include "Events/EventSubsystem.h"
 #include "Events/NewsSubsystem.h"
+#include "Forecast/ForecastSubsystem.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Engine/Engine.h"
@@ -966,6 +967,39 @@ void UDeadlineCheatManager::Dl_News(int32 Days)
 				KindNames[static_cast<int32>(Item.Kind)], *Item.EventID.ToString(), *Item.Text,
 				Item.Kind == ENewsKind::Rumour ? *FString::Printf(TEXT("  [%.0f%%, day %d]"), Item.Confidence * 100.f, Item.RelatedDay) : TEXT(""));
 		}
+	}
+}
+
+void UDeadlineCheatManager::Dl_Forecast()
+{
+	const UForecastSubsystem* Forecast = GetSub<UForecastSubsystem>(this);
+	if (!Forecast)
+	{
+		return;
+	}
+	const TArray<FForecastEntry> Board = Forecast->GetBoard();
+	Report(FString::Printf(TEXT("Forecast board: %d entries, total exposure $%.0f (details in the Output Log)"),
+		Board.Num(), Forecast->GetTotalExposure()));
+	for (const FForecastEntry& E : Board)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Deadline]   %s %-8s %-22s %3.0f%%  day %d (%+d)  impact +%.0f..%.0f%%  exposure $%.0f -> +$%.0f..%.0f"),
+			*E.EventID.ToString(), E.Status == EForecastStatus::Signal ? TEXT("SIGNAL") : TEXT("ACTIVE"), *E.Name,
+			E.Confidence * 100.f, E.Day, E.DaysAway, E.ImpactMin * 100.f, E.ImpactMax * 100.f,
+			E.Exposure, E.GainIfHappensMin, E.GainIfHappensMax);
+		for (const FForecastProductLine& P : E.Products)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Deadline]       %-6s $%-8.2f held %.1f ($%.0f)%s"),
+				*P.ProductID.ToString(), P.Price, P.HeldContainers, P.HeldValue,
+				E.Status == EForecastStatus::Active ? *FString::Printf(TEXT("  %+.0f%% since start"), P.ChangePercent) : TEXT(""));
+		}
+	}
+}
+
+void UDeadlineCheatManager::Dl_OpenForecast()
+{
+	if (ADeadlinePlayerController* PC = Cast<ADeadlinePlayerController>(GetOuterAPlayerController()))
+	{
+		PC->OpenForecastScreen();
 	}
 }
 
